@@ -15,6 +15,14 @@
 
 - [`docs/manuals/command-reference.md`](./command-reference.md)
 
+如果你想按“场景”而不是按命令阅读，直接看：
+
+- [`docs/manuals/scenario-playbooks.md`](./scenario-playbooks.md)
+
+如果你想看当前内部工程进展，直接看：
+
+- [`docs/milestones/2026-03-31-v0.1-internal-progress.md`](../milestones/2026-03-31-v0.1-internal-progress.md)
+
 如果你是正在仓库里工作的 `Codex` 或 `Claude Code`，优先看：
 
 - [`AGENTS.md`](../../AGENTS.md)

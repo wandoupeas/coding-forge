@@ -2,6 +2,8 @@
 
 这份文档按“什么时候用什么命令”来组织，而不是按源码文件组织。
 
+如果你想按“场景”阅读，而不是按命令查找，直接看 [`docs/manuals/scenario-playbooks.md`](./scenario-playbooks.md)。
+
 下文默认你已经可以直接使用：
 
 ```bash

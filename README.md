@@ -87,6 +87,7 @@ node dist/cli/index.js resume --json
 
 - [`docs/manuals/operations.md`](docs/manuals/operations.md)
 - [`docs/manuals/command-reference.md`](docs/manuals/command-reference.md)
+- [`docs/manuals/scenario-playbooks.md`](docs/manuals/scenario-playbooks.md)
 
 如果你是正在仓库里工作的 `Codex` 或 `Claude Code`，先看这两份：
 
@@ -236,8 +237,15 @@ node dist/cli/index.js resume --json
 1. `AGENTS.md`
 2. `ARCHITECTURE.md`
 3. `docs/manuals/operations.md`
-4. `docs/manuals/command-reference.md`
-5. `docs/agent-guide.md`
+4. `docs/manuals/scenario-playbooks.md`
+5. `docs/manuals/command-reference.md`
+6. `docs/agent-guide.md`
+
+## 里程碑说明
+
+如果你想看当前内部工程进展、已完成能力、验证状态和下一阶段建议，直接看：
+
+- [`docs/milestones/2026-03-31-v0.1-internal-progress.md`](docs/milestones/2026-03-31-v0.1-internal-progress.md)
 6. `docs/methodology/harness-principles.md`
 7. `docs/methodology/superpowers-integration.md`
 8. `docs/examples/minimal-agent-onboarding.md`
