@@ -23,6 +23,7 @@ import { createCheckpointCommand } from './commands/checkpoint.js';
 import { createUiCommand } from './commands/ui.js';
 import logger from './utils/logger.js';
 import { createVerifyCommand } from './commands/verify.js';
+import { createRecordCommand } from './commands/record.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -52,6 +53,7 @@ export function createProgram(): Command {
   program.addCommand(createCheckpointCommand());
   program.addCommand(createMailboxCommand());
   program.addCommand(createVerifyCommand());
+  program.addCommand(createRecordCommand());
   program.addCommand(createUiCommand());
 
   return program;

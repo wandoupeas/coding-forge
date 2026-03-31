@@ -72,6 +72,7 @@ export class LogManager {
   private log: ExecutionLog;
   private logPath: string;
   private basePath: string;
+  private initialized: boolean = false;
 
   constructor(
     command: string,
@@ -95,6 +96,33 @@ export class LogManager {
   }
 
   /**
+   * 如果已有日志文件，加载已有内容而不是覆盖
+   */
+  private async ensureLoaded(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+    this.initialized = true;
+
+    if (existsSync(this.logPath)) {
+      try {
+        const content = await readFile(this.logPath, 'utf-8');
+        const existing = JSON.parse(content) as ExecutionLog;
+        if (existing.sessionId === this.sessionId && Array.isArray(existing.entries)) {
+          this.log.entries = existing.entries;
+          this.log.startTime = existing.startTime;
+          this.log.stats = existing.stats ?? this.log.stats;
+          if (existing.command) {
+            this.log.command = existing.command;
+          }
+        }
+      } catch {
+        // 文件损坏则从空开始
+      }
+    }
+  }
+
+  /**
    * 记录日志
    */
   async addEntry(
@@ -113,6 +141,7 @@ export class LogManager {
       ...options
     };
 
+    await this.ensureLoaded();
     this.log.entries.push(entry);
 
     // 实时写入文件

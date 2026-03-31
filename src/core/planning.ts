@@ -32,6 +32,21 @@ export interface KnowledgeAnalysis {
   projectType?: string;
   keywords: string[];
   techStack: string[];
+  extractedPhases: ExtractedPhase[];
+  extractedTasks: ExtractedTask[];
+}
+
+export interface ExtractedPhase {
+  name: string;
+  description: string;
+}
+
+export interface ExtractedTask {
+  title: string;
+  description: string;
+  phase?: string;
+  priority: number;
+  dependsOn: string[];
 }
 
 export interface PlanningResult {
@@ -234,8 +249,19 @@ export async function buildPlanFromKnowledge(
 
   await saveTechStack(basePath, techStack);
 
-  const phases = generatePhases(template);
-  const tasks = generateSmartTasks(
+  const hasExtractedContent =
+    analysis.extractedPhases.length > 0 || analysis.extractedTasks.length > 0;
+
+  const phases = hasExtractedContent
+    ? buildPhasesFromExtracted(analysis.extractedPhases, analysis.extractedTasks)
+    : generatePhases(template);
+
+  const tasks = hasExtractedContent
+    ? buildTasksFromExtracted(phases, analysis.extractedTasks, analysis.extractedPhases, {
+        superpowers: options.superpowers,
+        execution: options.execution
+      })
+    : generateSmartTasks(
     phases,
     template,
     analysis,
@@ -336,7 +362,7 @@ async function analyzeKnowledgeBase(
   const techStack: string[] = [];
 
   if (knowledgeEntries.length === 0) {
-    return { documents: [], contents: {}, keywords: [], techStack: [] };
+    return { documents: [], contents: {}, keywords: [], techStack: [], extractedPhases: [], extractedTasks: [] };
   }
 
   const parsedEntries = new Map(
@@ -430,12 +456,18 @@ async function analyzeKnowledgeBase(
     projectType = 'web';
   }
 
+  const allContents = Object.values(contents).join('\n');
+  const extractedPhases = extractPhasesFromContent(allContents);
+  const extractedTasks = extractTasksFromContent(allContents, extractedPhases);
+
   return {
     documents,
     contents,
     projectType,
     keywords: [...new Set(keywords)],
-    techStack: [...new Set(techStack)]
+    techStack: [...new Set(techStack)],
+    extractedPhases,
+    extractedTasks
   };
 }
 
@@ -1117,6 +1149,196 @@ pending → ready → in_progress → completed
 - **Total Tasks:** ${tasks.length}
 - **Total Phases:** ${phases.length}
 `;
+}
+
+/**
+ * 从知识文档内容中提取阶段。
+ * 支持的格式：
+ *   ## Task N: 标题          → 作为 phase
+ *   ## Phase N: 标题         → 作为 phase
+ *   ## N. 标题               → 作为 phase
+ *   ## 阶段 N: 标题          → 作为 phase
+ */
+function extractPhasesFromContent(content: string): ExtractedPhase[] {
+  const phases: ExtractedPhase[] = [];
+  const phasePattern = /^##\s+(?:Task|Phase|阶段)\s*(\d+)\s*[:：]\s*(.+)/gm;
+  const numberedPattern = /^##\s+(\d+)\.\s*(.+)/gm;
+
+  for (const match of content.matchAll(phasePattern)) {
+    phases.push({
+      name: match[2].trim(),
+      description: ''
+    });
+  }
+
+  if (phases.length === 0) {
+    for (const match of content.matchAll(numberedPattern)) {
+      phases.push({
+        name: match[2].trim(),
+        description: ''
+      });
+    }
+  }
+
+  return phases;
+}
+
+/**
+ * 从知识文档内容中提取任务。
+ * 支持的格式：
+ *   - [ ] **Step N: 标题**    → checkbox 任务
+ *   - [ ] **标题**            → checkbox 任务
+ *   ### 标题                  → h3 标题作为任务
+ *   #### T00N: 标题           → 带 ID 的任务
+ */
+function extractTasksFromContent(
+  content: string,
+  phases: ExtractedPhase[]
+): ExtractedTask[] {
+  const tasks: ExtractedTask[] = [];
+
+  // 按 ## 分段，尝试匹配每段的标题到一个 phase
+  const sectionPattern = /^##\s+(.+)/gm;
+  const sectionStarts: Array<{ title: string; start: number }> = [];
+  for (const match of content.matchAll(sectionPattern)) {
+    sectionStarts.push({ title: match[1].trim(), start: match.index! });
+  }
+
+  for (let i = 0; i < sectionStarts.length; i++) {
+    const sectionStart = sectionStarts[i].start;
+    const sectionEnd = i + 1 < sectionStarts.length
+      ? sectionStarts[i + 1].start
+      : content.length;
+    const sectionContent = content.slice(sectionStart, sectionEnd);
+    const sectionTitle = sectionStarts[i].title;
+
+    // 匹配 phase 名称
+    const matchedPhase = phases.find((p) =>
+      sectionTitle.includes(p.name) || p.name.includes(sectionTitle)
+    );
+    const phaseName = matchedPhase?.name;
+
+    // 提取 checkbox 任务: - [ ] **Step N: xxx** 或 - [ ] **xxx**
+    const checkboxPattern = /^-\s+\[[ x]\]\s+\*\*(?:Step\s*\d+\s*[:：]\s*)?(.+?)\*\*/gm;
+    for (const match of sectionContent.matchAll(checkboxPattern)) {
+      tasks.push({
+        title: match[1].trim(),
+        description: '',
+        phase: phaseName,
+        priority: 2,
+        dependsOn: []
+      });
+    }
+  }
+
+  // 如果从 checkbox 没提取到，尝试 h3/h4
+  if (tasks.length === 0) {
+    const h3Pattern = /^###\s+(.+)/gm;
+    for (const match of content.matchAll(h3Pattern)) {
+      const title = match[1].trim();
+      if (title.length > 2 && title.length < 100 && !title.startsWith('#')) {
+        tasks.push({
+          title,
+          description: '',
+          priority: 2,
+          dependsOn: []
+        });
+      }
+    }
+  }
+
+  return tasks;
+}
+
+/**
+ * 从提取的 phases 构建 Phase 对象数组
+ */
+function buildPhasesFromExtracted(
+  extracted: ExtractedPhase[],
+  extractedTasks: ExtractedTask[]
+): Phase[] {
+  const now = new Date().toISOString();
+
+  if (extracted.length === 0 && extractedTasks.length > 0) {
+    // 没有明确的 phase，把所有任务归到一个 phase
+    return [{
+      id: 'P1',
+      name: '项目实现',
+      status: 'in_progress',
+      progress: 0,
+      depends_on: [],
+      created_at: now,
+      updated_at: now
+    }];
+  }
+
+  return extracted.map((phase, index) => ({
+    id: `P${index + 1}`,
+    name: phase.name,
+    description: phase.description,
+    status: index === 0 ? 'in_progress' as const : 'pending' as const,
+    progress: 0,
+    depends_on: index > 0 ? [`P${index}`] : [],
+    created_at: now,
+    updated_at: now
+  }));
+}
+
+/**
+ * 从提取的 tasks 构建 Task 对象数组
+ */
+function buildTasksFromExtracted(
+  phases: Phase[],
+  extractedTasks: ExtractedTask[],
+  extractedPhases: ExtractedPhase[],
+  options: { superpowers?: boolean; execution?: 'subagent' | 'inline' }
+): Task[] {
+  const now = new Date().toISOString();
+
+  return extractedTasks.map((task, index) => {
+    const taskId = `T${String(index + 1).padStart(3, '0')}`;
+
+    // 匹配 phase: 按名称查找，或按顺序分配
+    let phaseId = phases[0]?.id || 'P1';
+    if (task.phase) {
+      const matchedPhaseIndex = extractedPhases.findIndex(
+        (p) => p.name === task.phase
+      );
+      if (matchedPhaseIndex >= 0 && matchedPhaseIndex < phases.length) {
+        phaseId = phases[matchedPhaseIndex].id;
+      }
+    }
+
+    const dependsOn = index > 0
+      ? [`T${String(index).padStart(3, '0')}`]
+      : [];
+
+    const isFirstInPhase = index === 0 ||
+      extractedTasks[index - 1]?.phase !== task.phase;
+    const status = isFirstInPhase && phaseId === phases[0]?.id
+      ? 'ready' as const
+      : 'pending' as const;
+
+    const metadata: Record<string, unknown> = {};
+    if (options.superpowers) {
+      metadata.superpowers = true;
+      metadata.execution = options.execution;
+    }
+
+    return {
+      id: taskId,
+      phase: phaseId,
+      title: task.title,
+      description: task.description,
+      status: index === 0 ? 'ready' as const : status,
+      assignee: 'agent',
+      depends_on: isFirstInPhase ? [] : dependsOn,
+      priority: task.priority,
+      created_at: now,
+      updated_at: now,
+      ...(Object.keys(metadata).length > 0 ? { metadata } : {})
+    };
+  });
 }
 
 function escapeRegExp(value: string): string {

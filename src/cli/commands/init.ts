@@ -26,7 +26,8 @@ export function createInitCommand(): Command {
     .description('初始化 WebForge 项目')
     .argument('<project-name>', '项目名称')
     .option('-t, --template <template>', '项目模板', 'default')
-    .action(async (projectName: string, options: { template?: string }) => {
+    .option('--in-place', '在当前目录就地初始化（不创建子目录）')
+    .action(async (projectName: string, options: { template?: string; inPlace?: boolean }) => {
       try {
         await initProject(projectName, options);
       } catch (error) {
@@ -40,12 +41,12 @@ export function createInitCommand(): Command {
 
 export async function initProject(
   projectName: string,
-  options: { template?: string },
+  options: { template?: string; inPlace?: boolean },
   basePath: string = process.cwd()
 ): Promise<void> {
   logger.info(`初始化项目: ${projectName}\n`);
 
-  const projectRoot = join(basePath, projectName);
+  const projectRoot = options.inPlace ? basePath : join(basePath, projectName);
   const state = await createWorkspace(projectRoot, {
     projectName,
     template: options.template
@@ -67,15 +68,25 @@ export async function initProject(
   logger.info('验证入口: webforge verify init');
   console.log();
   logger.info('下一步:');
-  logger.list([
-    `cd ${projectName}`,
-    `workspace: ${state.paths.workspace}`,
-    `runtime: ${state.paths.runtime}`,
-    'webforge onboard --json',
-    '如需重跑初始化后自检，执行 webforge verify init',
-    '必要时再拆开执行 webforge doctor / webforge resume / webforge logs runtime',
-    '把需求文档放进 .webforge/knowledge/requirements/'
-  ]);
+  const nextSteps = options.inPlace
+    ? [
+        `workspace: ${state.paths.workspace}`,
+        `runtime: ${state.paths.runtime}`,
+        'webforge onboard --json',
+        '如需重跑初始化后自检，执行 webforge verify init',
+        '必要时再拆开执行 webforge doctor / webforge resume / webforge logs runtime',
+        '把需求文档放进 .webforge/knowledge/requirements/'
+      ]
+    : [
+        `cd ${projectName}`,
+        `workspace: ${state.paths.workspace}`,
+        `runtime: ${state.paths.runtime}`,
+        'webforge onboard --json',
+        '如需重跑初始化后自检，执行 webforge verify init',
+        '必要时再拆开执行 webforge doctor / webforge resume / webforge logs runtime',
+        '把需求文档放进 .webforge/knowledge/requirements/'
+      ];
+  logger.list(nextSteps);
   console.log();
 }
 

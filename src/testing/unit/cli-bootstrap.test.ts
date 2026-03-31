@@ -39,6 +39,7 @@ describe('cli bootstrap', () => {
       'checkpoint',
       'mailbox',
       'verify',
+      'record',
       'ui'
     ]);
   });
