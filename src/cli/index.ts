@@ -4,6 +4,8 @@
  */
 
 import { Command } from 'commander';
+import { realpathSync } from 'fs';
+import { resolve } from 'path';
 import { pathToFileURL } from 'url';
 import { createInitCommand } from './commands/init.js';
 import { createPlanCommand } from './commands/plan.js';
@@ -68,7 +70,15 @@ export function registerGlobalErrorHandlers(): void {
 }
 
 export function isCliEntrypoint(argv: string[] = process.argv): boolean {
-  return Boolean(argv[1]) && import.meta.url === pathToFileURL(argv[1]).href;
+  if (!argv[1]) {
+    return false;
+  }
+
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(argv[1])).href;
+  } catch {
+    return import.meta.url === pathToFileURL(resolve(argv[1])).href;
+  }
 }
 
 if (isCliEntrypoint()) {
