@@ -9,6 +9,6 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: fileURLToPath(new URL('./dist/ui/', import.meta.url)),
-    emptyOutDir: true
+    emptyOutDir: false
   }
 });

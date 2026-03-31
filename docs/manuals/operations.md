@@ -99,6 +99,14 @@ cd demo-app
 - `docs/agent-guide.md`
 - `docs/methodology/superpowers-integration.md`
 
+如果你已经有多个按 WebForge 契约工作的项目，希望统一观察它们的进度，也可以直接启动本地监控台：
+
+```bash
+webforge ui --root ~/projects
+```
+
+它会扫描这个根目录下所有包含 `.webforge/config.yaml` 或 `.webforge/runtime.json` 的项目，并提供只读的总览、详情、文档预览和 runtime 观察页。
+
 ## 3. 新项目起盘
 
 新项目从 0 开始时，推荐顺序如下。
@@ -265,6 +273,21 @@ webforge dashboard
 webforge logs runtime
 ```
 
+### 看多个项目的整体运行情况
+
+```bash
+webforge ui --root ~/projects
+```
+
+推荐按这个顺序看：
+
+1. 首页：先看项目数、blocked、pending review、drift
+2. 单项目 `Overview`：看 recovery、任务分布、交付物摘要、runtime 状态
+3. 单项目 `Artifacts`：看 knowledge、deliverables、sessions 的文本预览
+4. 单项目 `Runtime`：看最近 runtime 事件、日志快照 vs 当前工作区快照、checkpoint 队列
+
+这条 UI 路径是只读的，不会改写 `.webforge/`，适合拿来持续观察正在运行的项目。
+
 ### 看任务和交付物
 
 ```bash
@@ -345,3 +368,42 @@ WebForge 管状态和恢复。
 2. [`docs/manuals/command-reference.md`](./command-reference.md)
 3. [`docs/agent-guide.md`](../agent-guide.md)
 4. [`docs/examples/minimal-agent-onboarding.md`](../examples/minimal-agent-onboarding.md)
+
+## 10. 使用 Web UI 做项目监控
+
+Web UI 适合这几种场景：
+
+- 你同时跑着多个 WebForge 项目，想统一看健康状态
+- 你不想每个项目都单独敲 `dashboard / logs runtime`
+- 你想让人类开发者快速浏览 `.webforge/knowledge/`、deliverable 和 session 内容
+
+启动方式：
+
+```bash
+webforge ui --root ~/projects
+```
+
+常用选项：
+
+- `--root <path>`：扫描根目录
+- `--host <host>`：默认 `127.0.0.1`
+- `--port <port>`：默认 `4173`
+
+进入后可以重点看：
+
+- 首页项目卡片
+  适合先看 ready / blocked / pending review 和 recovery health
+- `Overview`
+  适合判断现在是否能继续做、下一步应该看哪一类状态
+- `Artifacts`
+  适合查看 PRD、设计说明、交付物草稿、session 快照
+- `Runtime`
+  适合判断最近一次 runtime 和当前工作区是否已经 drift，以及 checkpoint 是否可回看
+
+如果你主要是让 agent 恢复工作，仍然优先用：
+
+```bash
+webforge onboard --json
+```
+
+Web UI 是观察面，不替代 `onboard / doctor / resume / logs runtime` 这条恢复协议。

@@ -78,6 +78,37 @@ webforge onboard
 webforge onboard --json
 ```
 
+### `webforge ui [--root <path>] [--host <host>] [--port <port>]`
+
+启动本地只读 Web UI，用来观察一个根目录下的多个 WebForge 项目。
+
+当前 UI 会自动扫描根目录里带 `.webforge/config.yaml` 或 `.webforge/runtime.json` 的项目，并提供：
+
+- 首页多项目总览
+- 单项目 `Overview`
+- 单项目 `Artifacts`
+- 单项目 `Runtime`
+
+适合这些场景：
+
+- 你同时跑多个项目，想统一看 blocked / pending review / drift
+- 你想让人类开发者快速浏览 knowledge、deliverables、sessions
+- 你想通过页面持续观察 runtime pulse，而不是来回切终端
+
+常用示例：
+
+```bash
+webforge ui --root ~/projects
+webforge ui --root ~/projects --port 4173
+webforge ui --root ~/projects --host 0.0.0.0 --port 4317
+```
+
+注意：
+
+- 当前是只读监控台，不执行 `run / review / rollback`
+- 项目真相仍然在 `.webforge/`
+- 对 agent 来说，恢复工作仍然优先使用 `onboard --json`
+
 ## 2. 契约校验与恢复
 
 ### `webforge doctor [--json]`

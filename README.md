@@ -93,6 +93,25 @@ node dist/cli/index.js resume --json
 - 仓库契约是否完整
 - 当前 agent 下一步应该做什么
 
+如果你想用本地 Web UI 统一查看多个 WebForge 项目，可以直接启动：
+
+```bash
+node dist/cli/index.js ui --root ~/projects
+```
+
+如果你已经通过 npm 安装，则等价命令是：
+
+```bash
+webforge ui --root ~/projects
+```
+
+这个 UI 当前是只读监控台，会自动扫描根目录下带 `.webforge/` 的项目，并提供：
+
+- 多项目总览
+- 单项目 dashboard
+- 文档 / 交付物 / session 浏览
+- runtime / drift / checkpoint / mailbox / superpowers 观察
+
 ## 怎么使用
 
 如果你是人类开发者，先看这两份：
@@ -144,6 +163,19 @@ webforge verify init demo-app --json
 4. 运行 `run`
 5. 用 `dashboard / logs runtime / deliverables / review` 观察和收口
    其中 `logs runtime --json` 会同时给出 runtime 事件流、这条日志对应的恢复快照，以及当前工作区恢复快照
+
+如果你需要并行观察多个项目，则直接开 Web UI：
+
+```bash
+webforge ui --root ~/projects
+```
+
+推荐用法：
+
+1. 在首页看项目健康、blocked、pending review、drift
+2. 进入单项目页看 recovery、tasks、deliverables 和 runtime pulse
+3. 切到 `Artifacts` 页直接看 knowledge / deliverable / session 文本预览
+4. 切到 `Runtime` 页看日志快照 vs 当前工作区快照，以及 checkpoint 列表
 
 ## 仓库结构
 
