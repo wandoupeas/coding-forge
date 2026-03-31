@@ -61,6 +61,28 @@ describe('ui project scanner', () => {
     expect(projects[0]?.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
+  it('marks incomplete workspaces as not readable when runtime is missing', async () => {
+    sandboxDir = await mkdtemp(join(tmpdir(), 'webforge-ui-scan-'));
+
+    const projectRoot = join(sandboxDir, 'apps', 'charlie');
+    await mkdir(join(projectRoot, '.webforge'), { recursive: true });
+    await writeFile(
+      join(projectRoot, '.webforge', 'config.yaml'),
+      'project:\n  name: charlie\n',
+      'utf-8'
+    );
+
+    const projects = await scanProjects(sandboxDir);
+
+    expect(projects).toHaveLength(1);
+    expect(projects[0]).toMatchObject({
+      name: 'charlie',
+      rootPath: projectRoot,
+      workspacePath: join(projectRoot, '.webforge'),
+      readable: false
+    });
+  });
+
   it('refreshes the current root and updates the cached project list', async () => {
     sandboxDir = await mkdtemp(join(tmpdir(), 'webforge-ui-scan-'));
 

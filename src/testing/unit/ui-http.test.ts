@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Mailbox } from '../../core/mailbox.js';
@@ -115,6 +115,53 @@ describe('ui http', () => {
       }
     });
     expect(response.body.error.details.availableProjectIds).toHaveLength(1);
+  });
+
+  it('returns a structured workspace_unreadable error for incomplete projects', async () => {
+    workspaceDir = await mkdtemp(join(tmpdir(), 'webforge-ui-http-'));
+    const projectRoot = join(workspaceDir, 'tmp', 'test-clean');
+    await mkdir(join(projectRoot, '.webforge'), { recursive: true });
+    await writeFile(
+      join(projectRoot, '.webforge', 'config.yaml'),
+      'project:\n  name: test-clean\n',
+      'utf-8'
+    );
+
+    server = await createUiHttpServer({ rootPath: workspaceDir });
+
+    const projectId = server.registry.projects[0]?.id;
+    expect(projectId).toBeDefined();
+
+    const [projects, overview] = await Promise.all([
+      routeUiRequest('GET', '/api/projects', {
+        rootPath: workspaceDir,
+        registry: server.registry
+      }),
+      routeUiRequest('GET', `/api/projects/${projectId}/overview`, {
+        rootPath: workspaceDir,
+        registry: server.registry
+      })
+    ]);
+
+    expect(projects.status).toBe(200);
+    expect(projects.body.projects).toHaveLength(1);
+    expect(projects.body.projects[0]).toMatchObject({
+      name: 'test-clean',
+      readable: false
+    });
+
+    expect(overview.status).toBe(409);
+    expect(overview.body).toMatchObject({
+      error: {
+        code: 'workspace_unreadable',
+        message: 'Workspace is incomplete or unreadable',
+        details: {
+          projectId,
+          rootPath: projectRoot,
+          workspacePath: join(projectRoot, '.webforge')
+        }
+      }
+    });
   });
 });
 

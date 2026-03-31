@@ -22,6 +22,21 @@ export interface UiProjectNotFoundError {
   };
 }
 
+export interface UiWorkspaceUnreadableError {
+  error: {
+    code: 'workspace_unreadable';
+    message: string;
+    details: {
+      projectId: string;
+      rootPath: string;
+      workspacePath: string;
+      readable: boolean;
+    };
+  };
+}
+
+export type UiProjectLookupError = UiProjectNotFoundError | UiWorkspaceUnreadableError;
+
 export async function handleProjectsRequest(context: UiHttpContext): Promise<UiJsonResponse> {
   const projects = await context.registry.refresh(context.rootPath);
 
@@ -56,4 +71,38 @@ export async function getProjectById(
   }
 
   return project;
+}
+
+export async function getReadableProjectById(
+  context: UiHttpContext,
+  projectId: string
+): Promise<ProjectRecord | UiProjectLookupError> {
+  const project = await getProjectById(context, projectId);
+  if ('error' in project) {
+    return project;
+  }
+
+  if (project.readable) {
+    return project;
+  }
+
+  return {
+    error: {
+      code: 'workspace_unreadable',
+      message: 'Workspace is incomplete or unreadable',
+      details: {
+        projectId,
+        rootPath: project.rootPath,
+        workspacePath: project.workspacePath,
+        readable: project.readable
+      }
+    }
+  };
+}
+
+export function toProjectLookupErrorResponse(error: UiProjectLookupError): UiJsonResponse {
+  return {
+    status: error.error.code === 'project_not_found' ? 404 : 409,
+    body: error
+  };
 }

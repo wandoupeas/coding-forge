@@ -82,7 +82,7 @@ async function inspectProject(rootPath: string): Promise<ProjectRecord | null> {
     return null;
   }
 
-  const readable = config.readable && runtime.readable;
+  const readable = runtime.exists && runtime.readable && (!config.exists || config.readable);
   const updatedAtSource = Number(
     runtime.mtimeMs ?? config.mtimeMs ?? workspaceStat?.mtimeMs ?? rootStat?.mtimeMs ?? Date.now()
   );

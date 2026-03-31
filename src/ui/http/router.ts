@@ -22,47 +22,51 @@ export async function routeUiRequest(
   pathname: string,
   context: UiHttpContext
 ): Promise<UiJsonResponse> {
-  if (method !== 'GET') {
-    return methodNotAllowed(method);
-  }
+  try {
+    if (method !== 'GET') {
+      return methodNotAllowed(method);
+    }
 
-  if (pathname === '/api/projects') {
-    return handleProjectsRequest(context);
-  }
+    if (pathname === '/api/projects') {
+      return handleProjectsRequest(context);
+    }
 
-  const projectMatch = pathname.match(/^\/api\/projects\/([^/]+)(?:\/([^/]+))?$/);
-  if (!projectMatch) {
+    const projectMatch = pathname.match(/^\/api\/projects\/([^/]+)(?:\/([^/]+))?$/);
+    if (!projectMatch) {
+      return notFound('route_not_found', 'Route not found', {
+        pathname
+      });
+    }
+
+    const projectId = decodeURIComponent(projectMatch[1]);
+    const section = projectMatch[2];
+
+    if (section === 'overview') {
+      return handleProjectOverviewRequest(context, projectId);
+    }
+
+    if (section === 'tasks') {
+      return handleProjectTasksRequest(context, projectId);
+    }
+
+    if (section === 'artifacts') {
+      return handleProjectArtifactsRequest(context, projectId);
+    }
+
+    if (section === 'runtime') {
+      return handleProjectRuntimeRequest(context, projectId);
+    }
+
+    if (section === 'recovery') {
+      return handleProjectRecoveryRequest(context, projectId);
+    }
+
     return notFound('route_not_found', 'Route not found', {
       pathname
     });
+  } catch (error) {
+    return internalServerError(method, pathname, error);
   }
-
-  const projectId = decodeURIComponent(projectMatch[1]);
-  const section = projectMatch[2];
-
-  if (section === 'overview') {
-    return handleProjectOverviewRequest(context, projectId);
-  }
-
-  if (section === 'tasks') {
-    return handleProjectTasksRequest(context, projectId);
-  }
-
-  if (section === 'artifacts') {
-    return handleProjectArtifactsRequest(context, projectId);
-  }
-
-  if (section === 'runtime') {
-    return handleProjectRuntimeRequest(context, projectId);
-  }
-
-  if (section === 'recovery') {
-    return handleProjectRecoveryRequest(context, projectId);
-  }
-
-  return notFound('route_not_found', 'Route not found', {
-    pathname
-  });
 }
 
 function getPathname(url: string | undefined): string {
@@ -101,6 +105,26 @@ function notFound(
         code,
         message,
         details
+      }
+    }
+  };
+}
+
+function internalServerError(
+  method: string,
+  pathname: string,
+  error: unknown
+): UiJsonResponse {
+  return {
+    status: 500,
+    body: {
+      error: {
+        code: 'internal_server_error',
+        message: error instanceof Error ? error.message : 'Unexpected UI server error',
+        details: {
+          method,
+          pathname
+        }
       }
     }
   };

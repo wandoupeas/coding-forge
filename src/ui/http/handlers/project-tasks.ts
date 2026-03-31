@@ -1,17 +1,14 @@
 import { buildTasksReadModel } from '../../read-models/tasks.js';
 import type { UiHttpContext, UiJsonResponse } from './projects.js';
-import { getProjectById } from './projects.js';
+import { getReadableProjectById, toProjectLookupErrorResponse } from './projects.js';
 
 export async function handleProjectTasksRequest(
   context: UiHttpContext,
   projectId: string
 ): Promise<UiJsonResponse> {
-  const project = await getProjectById(context, projectId);
+  const project = await getReadableProjectById(context, projectId);
   if ('error' in project) {
-    return {
-      status: 404,
-      body: project
-    };
+    return toProjectLookupErrorResponse(project);
   }
 
   const tasks = await buildTasksReadModel(project.rootPath);

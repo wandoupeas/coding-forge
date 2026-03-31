@@ -372,6 +372,14 @@ export async function fetchProjectsDashboard(): Promise<ProjectsDashboardSnapsho
   const payload = await requestJson<ProjectsResponse>('/api/projects');
   const projects = await Promise.all(
     payload.projects.map(async (project) => {
+      if (!project.readable) {
+        return {
+          project,
+          overview: null,
+          error: 'Workspace is incomplete or unreadable.'
+        };
+      }
+
       try {
         const overview = await requestJson<ProjectOverviewResponse>(
           `/api/projects/${encodeURIComponent(project.id)}/overview`
