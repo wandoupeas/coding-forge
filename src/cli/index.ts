@@ -18,6 +18,7 @@ import { createLogsCommand } from './commands/logs.js';
 import { createMailboxCommand } from './commands/mailbox.js';
 import { createReviewCommand } from './commands/review.js';
 import { createCheckpointCommand } from './commands/checkpoint.js';
+import { createUiCommand } from './commands/ui.js';
 import logger from './utils/logger.js';
 import { createVerifyCommand } from './commands/verify.js';
 
@@ -49,6 +50,7 @@ export function createProgram(): Command {
   program.addCommand(createCheckpointCommand());
   program.addCommand(createMailboxCommand());
   program.addCommand(createVerifyCommand());
+  program.addCommand(createUiCommand());
 
   return program;
 }
