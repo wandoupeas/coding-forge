@@ -1,6 +1,7 @@
 import { Alert, Box, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { startTransition, useEffect, useState } from 'react';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import ProjectDetailShell from '../components/projects/ProjectDetailShell';
 import RecoveryPanel from '../components/projects/RecoveryPanel';
 import RuntimeEventsPanel from '../components/projects/RuntimeEventsPanel';
 import ProjectStatusSummary from '../components/projects/ProjectStatusSummary';
@@ -106,18 +107,18 @@ export default function ProjectOverviewPage() {
   }
 
   return (
-    <Stack gap="xl">
+    <ProjectDetailShell
+      projectId={id}
+      title={state.overview.project.name}
+      rootPath={state.overview.project.rootPath}
+      activeTab="summary"
+      recovery={state.recovery}
+    >
       {state.error ? (
-        <Alert color="orange" radius="xl" title="Using last successful snapshot">
+        <Alert color="orange" radius="md" title="Using last successful snapshot">
           {state.error}
         </Alert>
       ) : null}
-
-      <ProjectHeader
-        title={state.overview.project.name}
-        rootPath={state.overview.project.rootPath}
-        id={id}
-      />
 
       <Group grow align="stretch">
         <MetricCard label="Tasks" value={String(state.overview.tasks.total)} />
@@ -206,60 +207,7 @@ export default function ProjectOverviewPage() {
       </SimpleGrid>
 
       <RuntimeEventsPanel runtime={state.runtime} recovery={state.recovery} />
-    </Stack>
-  );
-}
-
-function ProjectHeader({ title, rootPath, id }: { title: string; rootPath: string; id: string }) {
-  return (
-    <Stack gap="md">
-      <Group justify="space-between" align="flex-start">
-        <Stack gap={6}>
-          <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-            Project detail
-          </Text>
-          <Title order={2} style={{ fontSize: 'clamp(1.9rem, 2.4vw, 3rem)' }}>
-            {title}
-          </Title>
-          <Text className="forge-mono" size="xs" c="dimmed">
-            {rootPath}
-          </Text>
-        </Stack>
-      </Group>
-      <ProjectNav projectId={id} />
-    </Stack>
-  );
-}
-
-function ProjectNav({ projectId }: { projectId: string }) {
-  const links = [
-    { label: 'Overview', to: `/projects/${projectId}` },
-    { label: 'Artifacts', to: `/projects/${projectId}/artifacts` },
-    { label: 'Runtime', to: `/projects/${projectId}/runtime` }
-  ];
-
-  return (
-    <Group gap="sm">
-      {links.map((link) => (
-        <NavLink
-          key={link.to}
-          to={link.to}
-          style={({ isActive }) => ({
-            padding: '0.55rem 0.9rem',
-            borderRadius: 999,
-            border: '1px solid rgba(22,32,40,0.1)',
-            background: isActive ? 'rgba(22,32,40,0.92)' : 'rgba(255,255,255,0.64)',
-            color: isActive ? '#f8f3e8' : 'inherit',
-            fontFamily: '"IBM Plex Mono", "SFMono-Regular", Consolas, monospace',
-            fontSize: '0.78rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em'
-          })}
-        >
-          {link.label}
-        </NavLink>
-      ))}
-    </Group>
+    </ProjectDetailShell>
   );
 }
 

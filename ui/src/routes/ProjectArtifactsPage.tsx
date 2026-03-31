@@ -1,11 +1,20 @@
 import { Alert, Box, Group, Stack, Text, Title } from '@mantine/core';
 import { startTransition, useEffect, useState } from 'react';
-import { Link, NavLink, useParams } from 'react-router-dom';
-import { fetchProjectArtifacts, type ApiProjectArtifacts } from '../lib/api';
+import { Link, useParams } from 'react-router-dom';
+import ProjectDetailShell from '../components/projects/ProjectDetailShell';
+import {
+  fetchProjectArtifacts,
+  fetchProjectRecovery,
+  type ApiProjectArtifacts,
+  type ApiProjectRecord,
+  type ApiProjectRecovery
+} from '../lib/api';
 
 interface ArtifactsState {
   status: 'loading' | 'ready' | 'error';
+  project: ApiProjectRecord | null;
   artifacts: ApiProjectArtifacts | null;
+  recovery: ApiProjectRecovery | null;
   error: string | null;
 }
 
@@ -18,7 +27,9 @@ export default function ProjectArtifactsPage() {
   const { id } = useParams<{ id: string }>();
   const [state, setState] = useState<ArtifactsState>({
     status: 'loading',
+    project: null,
     artifacts: null,
+    recovery: null,
     error: null
   });
   const [selection, setSelection] = useState<ArtifactSelection | null>(null);
@@ -31,7 +42,10 @@ export default function ProjectArtifactsPage() {
     let disposed = false;
     const load = async () => {
       try {
-        const artifacts = await fetchProjectArtifacts(id);
+        const [artifacts, recovery] = await Promise.all([
+          fetchProjectArtifacts(id),
+          fetchProjectRecovery(id)
+        ]);
         if (disposed) {
           return;
         }
@@ -39,7 +53,9 @@ export default function ProjectArtifactsPage() {
         startTransition(() => {
           setState({
             status: 'ready',
+            project: artifacts.project,
             artifacts: artifacts.data,
+            recovery: recovery.data,
             error: null
           });
           setSelection(defaultSelection(artifacts.data));
@@ -52,7 +68,9 @@ export default function ProjectArtifactsPage() {
         startTransition(() => {
           setState({
             status: 'error',
+            project: null,
             artifacts: null,
+            recovery: null,
             error: error instanceof Error ? error.message : String(error)
           });
         });
@@ -74,7 +92,7 @@ export default function ProjectArtifactsPage() {
     return <PageLoading label="Loading artifacts..." />;
   }
 
-  if (state.status === 'error' || !state.artifacts) {
+  if (state.status === 'error' || !state.project || !state.artifacts || !state.recovery) {
     return <NavigateBackHome message={state.error ?? 'Artifacts are unavailable.'} />;
   }
 
@@ -82,9 +100,13 @@ export default function ProjectArtifactsPage() {
   const preview = buildPreview(artifacts, selection);
 
   return (
-    <Stack gap="xl">
-      <ProjectHeader title="Artifacts" subtitle="Knowledge, deliverables, and sessions." id={id} />
-
+    <ProjectDetailShell
+      projectId={id}
+      title={state.project.name}
+      rootPath={state.project.rootPath}
+      activeTab="evidence"
+      recovery={state.recovery}
+    >
       <Group align="stretch" gap="lg" grow>
         <ArtifactColumn
           title={`Knowledge · ${artifacts.knowledge.total}`}
@@ -136,7 +158,7 @@ export default function ProjectArtifactsPage() {
           {preview.body}
         </Text>
       </Box>
-    </Stack>
+    </ProjectDetailShell>
   );
 }
 
@@ -254,53 +276,6 @@ function buildPreview(artifacts: ApiProjectArtifacts, selection: ArtifactSelecti
     meta: 'The selected item is no longer present in the current payload.',
     body: 'Refresh the page to synchronize with the latest `.webforge/` state.'
   };
-}
-
-function ProjectHeader({ title, subtitle, id }: { title: string; subtitle: string; id: string }) {
-  return (
-    <Stack gap="md">
-      <Stack gap={6}>
-        <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-          Project detail
-        </Text>
-        <Title order={2}>{title}</Title>
-        <Text c="dimmed">{subtitle}</Text>
-      </Stack>
-      <ProjectNav projectId={id} />
-    </Stack>
-  );
-}
-
-function ProjectNav({ projectId }: { projectId: string }) {
-  const links = [
-    { label: 'Overview', to: `/projects/${projectId}` },
-    { label: 'Artifacts', to: `/projects/${projectId}/artifacts` },
-    { label: 'Runtime', to: `/projects/${projectId}/runtime` }
-  ];
-
-  return (
-    <Group gap="sm">
-      {links.map((link) => (
-        <NavLink
-          key={link.to}
-          to={link.to}
-          style={({ isActive }) => ({
-            padding: '0.55rem 0.9rem',
-            borderRadius: 999,
-            border: '1px solid rgba(22,32,40,0.1)',
-            background: isActive ? 'rgba(22,32,40,0.92)' : 'rgba(255,255,255,0.64)',
-            color: isActive ? '#f8f3e8' : 'inherit',
-            fontFamily: '"IBM Plex Mono", "SFMono-Regular", Consolas, monospace',
-            fontSize: '0.78rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em'
-          })}
-        >
-          {link.label}
-        </NavLink>
-      ))}
-    </Group>
-  );
 }
 
 function PageLoading({ label }: { label: string }) {
