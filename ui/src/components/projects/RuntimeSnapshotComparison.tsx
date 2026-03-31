@@ -23,14 +23,14 @@ export default function RuntimeSnapshotComparison({
         <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
           {title}
         </Text>
-        <KeyValueRow label="workflow" value={workflowContext?.workflow ?? 'none'} />
-        <KeyValueRow label="status" value={workflowContext?.status ?? 'none'} />
-        <KeyValueRow label="branch" value={workflowContext?.branch ?? 'none'} />
-        <KeyValueRow label="worktree" value={workflowContext?.worktreePath ?? 'none'} />
-        <KeyValueRow label="thread" value={threadLinkage?.threadId ?? 'none'} />
-        <KeyValueRow label="thread status" value={threadLinkage?.status ?? 'none'} />
+        <KeyValueRow label="工作流" value={workflowContext?.workflow ?? 'none'} />
+        <KeyValueRow label="状态" value={workflowContext?.status ?? 'none'} />
+        <KeyValueRow label="分支" value={workflowContext?.branch ?? 'none'} />
+        <KeyValueRow label="工作树" value={workflowContext?.worktreePath ?? 'none'} />
+        <KeyValueRow label="线程" value={threadLinkage?.threadId ?? 'none'} />
+        <KeyValueRow label="线程状态" value={threadLinkage?.status ?? 'none'} />
         <KeyValueRow
-          label="missing"
+          label="缺失"
           value={
             threadLinkage?.missingArtifacts[0] ??
             threadLinkage?.missingWorktreePath ??

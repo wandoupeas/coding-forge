@@ -83,15 +83,15 @@ export default function ProjectRuntimePage() {
   }, [id]);
 
   if (!id) {
-    return <NavigateBackHome message="Project id is missing." />;
+    return <NavigateBackHome message="项目 ID 缺失。" />;
   }
 
   if (state.status === 'loading' && !state.runtime) {
-    return <PageLoading label="Loading runtime view..." />;
+    return <PageLoading label="正在加载运行时视图..." />;
   }
 
   if (state.status === 'error' || !state.project || !state.runtime || !state.recovery) {
-    return <NavigateBackHome message={state.error ?? 'Runtime view is unavailable.'} />;
+    return <NavigateBackHome message={state.error ?? '运行时视图不可用。'} />;
   }
 
   return (
@@ -103,16 +103,16 @@ export default function ProjectRuntimePage() {
       recovery={state.recovery}
     >
       {state.error ? (
-        <Alert color="orange" radius="md" title="Using last successful snapshot">
+        <Alert color="orange" radius="md" title="正在使用上次成功的快照">
           {state.error}
         </Alert>
       ) : null}
 
       <Group grow>
-        <MetricCard label="Runtime status" value={state.runtime.runtime.status} />
-        <MetricCard label="Last event" value={state.runtime.latestObservation?.lastEvent ?? 'none'} />
-        <MetricCard label="Drift" value={state.recovery.contextDrift.status} />
-        <MetricCard label="Checkpoint count" value={String(state.runtime.checkpoints.total)} />
+        <MetricCard label="运行时状态" value={state.runtime.runtime.status} />
+        <MetricCard label="最后事件" value={state.runtime.latestObservation?.lastEvent ?? 'none'} />
+        <MetricCard label="漂移" value={state.recovery.contextDrift.status} />
+        <MetricCard label="检查点数量" value={String(state.runtime.checkpoints.total)} />
       </Group>
 
       <RuntimeEventsPanel runtime={state.runtime} recovery={state.recovery} />
@@ -152,10 +152,10 @@ function PageLoading({ label }: { label: string }) {
 
 function NavigateBackHome({ message }: { message: string }) {
   return (
-    <Alert color="red" radius="xl" title="Runtime unavailable">
+    <Alert color="red" radius="xl" title="运行时不可用">
       <Text>{message}</Text>
       <Text mt="sm" component={Link} to="/">
-        Back to projects
+        返回项目列表
       </Text>
     </Alert>
   );

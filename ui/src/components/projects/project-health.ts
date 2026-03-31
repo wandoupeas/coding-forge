@@ -20,10 +20,10 @@ export interface ProjectHealthTotals {
 }
 
 const HEALTH_LABELS: Record<ProjectHealthKind, string> = {
-  healthy: 'Healthy',
-  watch: 'Watch',
-  blocked: 'Blocked',
-  'missing-overview': 'Missing overview'
+  healthy: '正常',
+  watch: '关注',
+  blocked: '阻塞',
+  'missing-overview': '缺少概览'
 };
 
 const HEALTH_COLORS: Record<ProjectHealthKind, 'forgeLime' | 'forgeInk' | 'forgeRust'> = {
@@ -47,7 +47,7 @@ export function getProjectHealth(entry: ProjectDashboardEntry): ProjectHealth {
       severity: HEALTH_SEVERITY['missing-overview'],
       label: HEALTH_LABELS['missing-overview'],
       color: HEALTH_COLORS['missing-overview'],
-      summary: entry.error ?? 'No project overview is available yet.'
+      summary: entry.error ?? '尚无可用的项目概览。'
     };
   }
 
@@ -57,7 +57,7 @@ export function getProjectHealth(entry: ProjectDashboardEntry): ProjectHealth {
       severity: HEALTH_SEVERITY.blocked,
       label: HEALTH_LABELS.blocked,
       color: HEALTH_COLORS.blocked,
-      summary: `${entry.overview.tasks.blocked} blocked task(s), ${entry.overview.runtime.summary}`
+      summary: `${entry.overview.tasks.blocked} 个阻塞任务，${entry.overview.runtime.summary}`
     };
   }
 
@@ -72,8 +72,8 @@ export function getProjectHealth(entry: ProjectDashboardEntry): ProjectHealth {
       color: HEALTH_COLORS.watch,
       summary:
         entry.overview.tasks.pendingReview > 0
-          ? `${entry.overview.tasks.pendingReview} item(s) pending review`
-          : `Context drift reported as ${entry.overview.recovery.contextDriftStatus}`
+          ? `${entry.overview.tasks.pendingReview} 项待审核`
+          : `上下文漂移状态：${entry.overview.recovery.contextDriftStatus}`
     };
   }
 
@@ -82,7 +82,7 @@ export function getProjectHealth(entry: ProjectDashboardEntry): ProjectHealth {
     severity: HEALTH_SEVERITY.healthy,
     label: HEALTH_LABELS.healthy,
     color: HEALTH_COLORS.healthy,
-    summary: entry.overview.runtime.summary || 'Snapshot is ready for follow-up work.'
+    summary: entry.overview.runtime.summary || '快照已就绪，可继续工作。'
   };
 }
 

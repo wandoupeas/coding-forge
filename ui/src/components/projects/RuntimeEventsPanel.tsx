@@ -17,9 +17,9 @@ export default function RuntimeEventsPanel({ runtime, recovery }: RuntimeEventsP
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-                Runtime
+                运行时
               </Text>
-              <Text fw={700}>Event pulse, checkpoints, and recovery evidence.</Text>
+              <Text fw={700}>事件脉搏、检查点与恢复证据。</Text>
             </Stack>
             <Badge
               variant="light"
@@ -32,13 +32,13 @@ export default function RuntimeEventsPanel({ runtime, recovery }: RuntimeEventsP
 
           <Group gap="xs">
             <Badge variant="light" color="forgeInk" radius="xl">
-              mailbox {runtime.mailboxes.unreadMessages}
+              邮箱 {runtime.mailboxes.unreadMessages}
             </Badge>
             <Badge variant="light" color="forgeInk" radius="xl">
-              checkpoints {runtime.checkpoints.total}
+              检查点 {runtime.checkpoints.total}
             </Badge>
             <Badge variant="light" color="forgeInk" radius="xl">
-              superpowers {runtime.superpowers.totalRuns}
+              增强层 {runtime.superpowers.totalRuns}
             </Badge>
             <Badge
               variant="light"
@@ -56,13 +56,13 @@ export default function RuntimeEventsPanel({ runtime, recovery }: RuntimeEventsP
           <Paper withBorder radius="md" p="md">
             <Stack gap="sm">
               <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-                Recent events
+                最近事件
               </Text>
               <ScrollArea h={300} type="auto" offsetScrollbars>
                 <Stack gap="sm">
                   {events.length === 0 ? (
                     <Text size="sm" c="dimmed">
-                      No runtime events have been recorded yet.
+                      尚未记录任何运行时事件。
                     </Text>
                   ) : (
                     events.slice(0, 8).map((event) => (
@@ -73,7 +73,7 @@ export default function RuntimeEventsPanel({ runtime, recovery }: RuntimeEventsP
                           </Text>
                           <Text size="sm">{event.message}</Text>
                           <Text className="forge-mono" size="xs" c="dimmed">
-                            task={event.taskId ?? 'none'} / permission={event.permissionProfile ?? 'unknown'}
+                            task={event.taskId ?? 'none'} / 权限={event.permissionProfile ?? '未知'}
                           </Text>
                         </Stack>
                       </Paper>
@@ -89,32 +89,32 @@ export default function RuntimeEventsPanel({ runtime, recovery }: RuntimeEventsP
           <Paper withBorder radius="md" p="md">
             <Stack gap="sm">
               <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-                Checkpoint + signals
+                检查点 + 信号
               </Text>
               <KeyValueRow
-                label="Latest checkpoint"
+                label="最新检查点"
                 value={runtime.checkpoints.latest?.name ?? 'none'}
               />
               <KeyValueRow
-                label="Latest runtime session"
+                label="最新运行时会话"
                 value={runtime.latestObservation?.sessionId ?? 'none'}
               />
               <KeyValueRow
-                label="Last runtime event"
+                label="最后运行时事件"
                 value={runtime.latestObservation?.lastEvent ?? 'none'}
               />
               <KeyValueRow
-                label="Latest superpowers run"
+                label="最新增强层运行"
                 value={runtime.superpowers.latestRun?.workflow ?? 'none'}
               />
 
               <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed" mt="sm">
-                Queue
+                队列
               </Text>
               <Stack gap="xs">
                 {runtime.checkpoints.items.length === 0 ? (
                   <Text size="sm" c="dimmed">
-                    No checkpoints recorded.
+                    暂无检查点记录。
                   </Text>
                 ) : (
                   runtime.checkpoints.items.map((checkpoint) => (
@@ -134,23 +134,23 @@ export default function RuntimeEventsPanel({ runtime, recovery }: RuntimeEventsP
 
       <Stack gap="lg">
         <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-          Snapshots comparison
+          快照对照
         </Text>
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
           <RuntimeSnapshotComparison
-            title="Runtime log snapshot"
+            title="运行时日志快照"
             workflowContext={recovery.runtimeLogs?.workflowContext ?? null}
             threadLinkage={recovery.runtimeLogs?.threadLinkage ?? null}
           />
           <RuntimeSnapshotComparison
-            title="Current workspace snapshot"
+            title="当前工作区快照"
             workflowContext={recovery.runtimeLogs?.currentWorkflowContext ?? null}
             threadLinkage={recovery.runtimeLogs?.currentThreadLinkage ?? null}
           />
         </SimpleGrid>
 
         {recovery.contextDrift.reasons.length > 0 ? (
-          <Alert color="orange" radius="md" title="Drift reasons">
+          <Alert color="orange" radius="md" title="漂移原因">
             <Stack gap="xs">
               {recovery.contextDrift.reasons.map((reason) => (
                 <Text key={reason} size="sm">

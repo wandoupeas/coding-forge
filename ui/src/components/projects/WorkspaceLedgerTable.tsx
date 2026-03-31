@@ -8,7 +8,7 @@ interface WorkspaceLedgerTableProps {
 
 export default function WorkspaceLedgerTable({ projects }: WorkspaceLedgerTableProps) {
   return (
-    <Paper component="section" aria-label="Workspace ledger" withBorder radius="md" p="md">
+    <Paper component="section" aria-label="工作区台账" withBorder radius="md" p="md">
       <ScrollArea type="auto" offsetScrollbars>
         <Table
           miw={820}
@@ -18,23 +18,23 @@ export default function WorkspaceLedgerTable({ projects }: WorkspaceLedgerTableP
           striped
           verticalSpacing="sm"
           horizontalSpacing="md"
-          aria-label="Workspace ledger"
+          aria-label="工作区台账"
         >
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Workspace</Table.Th>
-              <Table.Th>Tasks</Table.Th>
-              <Table.Th>Runtime</Table.Th>
-              <Table.Th>Recovery</Table.Th>
-              <Table.Th>Artifacts</Table.Th>
-              <Table.Th>Updated</Table.Th>
+              <Table.Th>工作区</Table.Th>
+              <Table.Th>任务</Table.Th>
+              <Table.Th>运行时</Table.Th>
+              <Table.Th>恢复</Table.Th>
+              <Table.Th>产物</Table.Th>
+              <Table.Th>更新时间</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {projects.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={6}>
-                  <Text c="dimmed">No project rows are available yet.</Text>
+                  <Text c="dimmed">暂无可用的项目行。</Text>
                 </Table.Td>
               </Table.Tr>
             ) : (
@@ -43,11 +43,11 @@ export default function WorkspaceLedgerTable({ projects }: WorkspaceLedgerTableP
                 const runtimeStatus = overview?.runtime.status ?? 'unavailable';
                 const recoveryStatus = overview?.recovery.status ?? 'blocked';
                 const taskSummary = overview
-                  ? `${overview.tasks.ready} ready / ${overview.tasks.blocked} blocked / ${overview.tasks.pendingReview} review`
-                  : 'overview unavailable';
+                  ? `${overview.tasks.ready} 就绪 / ${overview.tasks.blocked} 阻塞 / ${overview.tasks.pendingReview} 待审核`
+                  : '概览不可用';
                 const artifactSummary = overview
-                  ? `${overview.artifacts.knowledgeCount} knowledge / ${overview.artifacts.deliverablesCount} deliverables / ${overview.artifacts.sessionCount} sessions`
-                  : 'no artifacts snapshot';
+                  ? `${overview.artifacts.knowledgeCount} 知识 / ${overview.artifacts.deliverablesCount} 交付物 / ${overview.artifacts.sessionCount} 会话`
+                  : '无产物快照';
 
                 return (
                   <Table.Tr key={entry.project.id}>
@@ -67,7 +67,7 @@ export default function WorkspaceLedgerTable({ projects }: WorkspaceLedgerTableP
                         {runtimeStatus}
                       </Badge>
                       <Text mt={6} size="xs" c="dimmed">
-                        {overview?.runtime.summary ?? entry.error ?? 'snapshot pending'}
+                        {overview?.runtime.summary ?? entry.error ?? '快照待生成'}
                       </Text>
                     </Table.Td>
                     <Table.Td>
@@ -77,7 +77,7 @@ export default function WorkspaceLedgerTable({ projects }: WorkspaceLedgerTableP
                       <Text mt={6} size="xs" c="dimmed">
                         {overview
                           ? `drift=${overview.recovery.contextDriftStatus} / thread=${overview.recovery.threadLinkageStatus}`
-                          : 'recovery unavailable'}
+                          : '恢复不可用'}
                       </Text>
                     </Table.Td>
                     <Table.Td>

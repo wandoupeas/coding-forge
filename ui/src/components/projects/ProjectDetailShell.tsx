@@ -32,7 +32,7 @@ export default function ProjectDetailShell({
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-                Project Detail
+                项目详情
               </Text>
               <Title order={2} style={{ fontSize: 'clamp(1.6rem, 2.2vw, 2.5rem)' }}>
                 {title}
@@ -78,9 +78,9 @@ export default function ProjectDetailShell({
             }}
           >
             <Tabs.List>
-              <Tabs.Tab value="summary">Summary</Tabs.Tab>
-              <Tabs.Tab value="evidence">Evidence</Tabs.Tab>
-              <Tabs.Tab value="runtime">Runtime</Tabs.Tab>
+              <Tabs.Tab value="summary">摘要</Tabs.Tab>
+              <Tabs.Tab value="evidence">证据</Tabs.Tab>
+              <Tabs.Tab value="runtime">运行时</Tabs.Tab>
             </Tabs.List>
           </Tabs>
         </Stack>

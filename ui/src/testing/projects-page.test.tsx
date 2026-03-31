@@ -196,9 +196,9 @@ describe('projects page', () => {
   it('renders project navigation, a workspace table, and ready snapshot rows', async () => {
     renderApp('/');
 
-    const projectIndex = await screen.findByRole('navigation', { name: /project index/i });
-    const ledger = await screen.findByRole('table', { name: /workspace ledger/i });
-    const signalRail = screen.getByRole('complementary', { name: /signal rail/i });
+    const projectIndex = await screen.findByRole('navigation', { name: /项目索引/i });
+    const ledger = await screen.findByRole('table', { name: /工作区台账/i });
+    const signalRail = screen.getByRole('complementary', { name: /信号栏/i });
 
     expect(projectIndex).toBeInTheDocument();
     expect(ledger).toBeInTheDocument();
@@ -210,18 +210,18 @@ describe('projects page', () => {
       '/projects/alpha'
     );
 
-    expect(within(projectIndex).getByText('1 healthy')).toBeInTheDocument();
-    expect(within(projectIndex).getByText('1 watch')).toBeInTheDocument();
-    expect(within(projectIndex).getByText('2 blocked')).toBeInTheDocument();
-    expect(screen.getByText('1 project with pending review artifacts')).toBeInTheDocument();
+    expect(within(projectIndex).getByText('1 正常')).toBeInTheDocument();
+    expect(within(projectIndex).getByText('1 关注')).toBeInTheDocument();
+    expect(within(projectIndex).getByText('2 阻塞')).toBeInTheDocument();
+    expect(screen.getByText('1 个项目有待审核产物')).toBeInTheDocument();
 
     expect(within(ledger).getByText('Alpha Workspace')).toBeInTheDocument();
-    expect(within(ledger).getByText('7 ready / 0 blocked / 0 review')).toBeInTheDocument();
+    expect(within(ledger).getByText('7 就绪 / 0 阻塞 / 0 待审核')).toBeInTheDocument();
     expect(within(ledger).getByText('Beta Workspace')).toBeInTheDocument();
 
     const alerts = within(signalRail).getAllByRole('alert');
-    expect(alerts[0]).toHaveTextContent('Missing overview');
-    expect(alerts[1]).toHaveTextContent('Blocked');
-    expect(within(signalRail).getByText('+1 more signals')).toBeInTheDocument();
+    expect(alerts[0]).toHaveTextContent('缺少概览');
+    expect(alerts[1]).toHaveTextContent('阻塞');
+    expect(within(signalRail).getByText('还有 1 条信号')).toBeInTheDocument();
   });
 });

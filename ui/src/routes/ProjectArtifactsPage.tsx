@@ -83,15 +83,15 @@ export default function ProjectArtifactsPage() {
   }, [id]);
 
   if (!id) {
-    return <NavigateBackHome message="Project id is missing." />;
+    return <NavigateBackHome message="项目 ID 缺失。" />;
   }
 
   if (state.status === 'loading' && !state.artifacts) {
-    return <PageLoading label="Loading artifacts..." />;
+    return <PageLoading label="正在加载产物..." />;
   }
 
   if (state.status === 'error' || !state.project || !state.artifacts || !state.recovery) {
-    return <NavigateBackHome message={state.error ?? 'Artifacts are unavailable.'} />;
+    return <NavigateBackHome message={state.error ?? '产物不可用。'} />;
   }
 
   const artifacts = state.artifacts;
@@ -121,10 +121,10 @@ function PageLoading({ label }: { label: string }) {
 
 function NavigateBackHome({ message }: { message: string }) {
   return (
-    <Alert color="red" radius="xl" title="Artifacts unavailable">
+    <Alert color="red" radius="xl" title="产物不可用">
       <Text>{message}</Text>
       <Text mt="sm" component={Link} to="/">
-        Back to projects
+        返回项目列表
       </Text>
     </Alert>
   );

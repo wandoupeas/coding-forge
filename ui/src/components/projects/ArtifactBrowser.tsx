@@ -41,11 +41,11 @@ export default function ArtifactBrowser({ artifacts }: ArtifactBrowserProps) {
             }}
           >
             <Tabs.List>
-              <Tabs.Tab value="knowledge">Knowledge ({artifacts.knowledge.total})</Tabs.Tab>
+              <Tabs.Tab value="knowledge">知识 ({artifacts.knowledge.total})</Tabs.Tab>
               <Tabs.Tab value="deliverable">
-                Deliverables ({artifacts.deliverables.total})
+                交付物 ({artifacts.deliverables.total})
               </Tabs.Tab>
-              <Tabs.Tab value="session">Sessions ({artifacts.sessions.total})</Tabs.Tab>
+              <Tabs.Tab value="session">会话 ({artifacts.sessions.total})</Tabs.Tab>
             </Tabs.List>
           </Tabs>
         </Grid.Col>
@@ -55,16 +55,16 @@ export default function ArtifactBrowser({ artifacts }: ArtifactBrowserProps) {
             <Stack gap="xs">
               <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
                 {activeKind === 'knowledge'
-                  ? 'Knowledge'
+                  ? '知识'
                   : activeKind === 'deliverable'
-                    ? 'Deliverables'
-                    : 'Sessions'}
+                    ? '交付物'
+                    : '会话'}
               </Text>
               <ScrollArea h={380} type="auto" offsetScrollbars>
                 <Stack gap={6}>
                   {items.length === 0 ? (
                     <Text c="dimmed" size="sm">
-                      No items are available in this lane.
+                      此分类下暂无可用项目。
                     </Text>
                   ) : (
                     items.map((item) => (
@@ -87,7 +87,7 @@ export default function ArtifactBrowser({ artifacts }: ArtifactBrowserProps) {
           <Paper withBorder radius="md" p="md">
             <Stack gap="sm">
               <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-                Preview
+                预览
               </Text>
               <Title order={4}>{preview.title}</Title>
               <Text size="sm" c="dimmed">
@@ -162,9 +162,9 @@ function itemsForKind(artifacts: ApiProjectArtifacts, kind: ArtifactKind) {
 function buildPreview(artifacts: ApiProjectArtifacts, selection: ArtifactSelection | null) {
   if (!selection) {
     return {
-      title: 'No artifact selected',
-      meta: 'Choose an item from the browser to inspect its preview and metadata.',
-      body: 'This panel reads from the tracked `.webforge/` payload without mutating project state.'
+      title: '未选择产物',
+      meta: '从浏览器中选择一个条目以查看其预览和元数据。',
+      body: '此面板从已跟踪的 `.webforge/` 数据中读取，不会修改项目状态。'
     };
   }
 
@@ -174,7 +174,7 @@ function buildPreview(artifacts: ApiProjectArtifacts, selection: ArtifactSelecti
       return {
         title: item.title,
         meta: `${item.type} · ${item.updatedAt} · ${item.path}`,
-        body: item.preview ?? `Knowledge entry stored at ${item.path}. No text preview is available.`
+        body: item.preview ?? `知识条目存储于 ${item.path}，暂无文本预览。`
       };
     }
   }
@@ -187,7 +187,7 @@ function buildPreview(artifacts: ApiProjectArtifacts, selection: ArtifactSelecti
         meta: `${item.type} · ${item.status} · ${item.createdBy} · ${item.path}`,
         body:
           item.preview ??
-          `Deliverable ${item.id} belongs to task ${item.taskId}. No text preview is available.`
+          `交付物 ${item.id} 属于任务 ${item.taskId}，暂无文本预览。`
       };
     }
   }
@@ -199,13 +199,13 @@ function buildPreview(artifacts: ApiProjectArtifacts, selection: ArtifactSelecti
       meta: `${item.status} · ${item.lastActive}`,
       body:
         item.preview ??
-        `Session ${item.id} last focused on task ${item.currentTask ?? 'none'} in phase ${item.currentPhase ?? 'none'}.`
+        `会话 ${item.id} 上次聚焦于任务 ${item.currentTask ?? 'none'}，阶段 ${item.currentPhase ?? 'none'}。`
     };
   }
 
   return {
-    title: 'Artifact unavailable',
-    meta: 'The selected item is no longer present in the current payload.',
-    body: 'Refresh the view to synchronize with the latest `.webforge/` state.'
+    title: '产物不可用',
+    meta: '所选条目已不在当前数据中。',
+    body: '刷新视图以与最新的 `.webforge/` 状态同步。'
   };
 }

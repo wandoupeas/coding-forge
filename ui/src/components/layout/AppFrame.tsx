@@ -20,10 +20,10 @@ export default function AppFrame({ children }: PropsWithChildren) {
         <Group h="100%" px="md" justify="space-between" align="center">
           <Stack gap={0}>
             <Title order={3} fw={600}>
-              Coding Forge Monitor
+              Coding Forge 监控台
             </Title>
             <Text size="xs" c="dimmed">
-              Read-only workspace monitor backed by <span className="forge-mono">.webforge/</span>
+              基于 <span className="forge-mono">.webforge/</span> 的只读工作区监控
             </Text>
           </Stack>
         </Group>

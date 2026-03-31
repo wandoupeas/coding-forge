@@ -17,11 +17,11 @@ const COLORS = {
 
 export default function ProjectStatusSummary(props: ProjectStatusSummaryProps) {
   const chartData = [
-    { name: 'Ready', value: props.ready, color: COLORS.ready },
-    { name: 'Blocked', value: props.blocked, color: COLORS.blocked },
-    { name: 'Pending Review', value: props.pendingReview, color: COLORS.pendingReview },
+    { name: '就绪', value: props.ready, color: COLORS.ready },
+    { name: '阻塞', value: props.blocked, color: COLORS.blocked },
+    { name: '待审核', value: props.pendingReview, color: COLORS.pendingReview },
     {
-      name: 'Other',
+      name: '其他',
       value: Math.max(props.total - props.ready - props.blocked - props.pendingReview, 0),
       color: COLORS.idle
     }
@@ -60,10 +60,10 @@ export default function ProjectStatusSummary(props: ProjectStatusSummaryProps) {
       </Box>
 
       <Stack gap={8} justify="center" style={{ flex: 1 }}>
-        <SummaryRow label="Ready" value={props.ready} accent={COLORS.ready} />
-        <SummaryRow label="Blocked" value={props.blocked} accent={COLORS.blocked} />
-        <SummaryRow label="Pending Review" value={props.pendingReview} accent={COLORS.pendingReview} />
-        <SummaryRow label="Total Tasks" value={props.total} accent={COLORS.idle} />
+        <SummaryRow label="就绪" value={props.ready} accent={COLORS.ready} />
+        <SummaryRow label="阻塞" value={props.blocked} accent={COLORS.blocked} />
+        <SummaryRow label="待审核" value={props.pendingReview} accent={COLORS.pendingReview} />
+        <SummaryRow label="任务总计" value={props.total} accent={COLORS.idle} />
       </Stack>
     </Group>
   );

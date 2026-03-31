@@ -94,15 +94,15 @@ export default function ProjectOverviewPage() {
   }, [id]);
 
   if (!id) {
-    return <NavigateBackHome message="Project id is missing." />;
+    return <NavigateBackHome message="项目 ID 缺失。" />;
   }
 
   if (state.status === 'loading' && !state.overview) {
-    return <PageLoading label="Loading project overview..." />;
+    return <PageLoading label="正在加载项目概览..." />;
   }
 
   if (state.status === 'error' || !state.overview || !state.tasks || !state.recovery || !state.runtime) {
-    return <NavigateBackHome message={state.error ?? 'Project overview is unavailable.'} />;
+    return <NavigateBackHome message={state.error ?? '项目概览不可用。'} />;
   }
 
   return (
@@ -114,7 +114,7 @@ export default function ProjectOverviewPage() {
       recovery={state.recovery}
     >
       {state.error ? (
-        <Alert color="orange" radius="md" title="Using last successful snapshot">
+        <Alert color="orange" radius="md" title="正在使用上次成功的快照">
           {state.error}
         </Alert>
       ) : null}
@@ -124,42 +124,42 @@ export default function ProjectOverviewPage() {
         <Paper withBorder radius="md" p="md">
           <Stack gap="lg">
             <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-              Artifact pulse
+              产物脉搏
             </Text>
-            <Text fw={700}>Current task pressure, artifact counts, and runtime pulse.</Text>
+            <Text fw={700}>当前任务压力、产物数量和运行时脉搏。</Text>
             <Grid gutter="sm">
               <Grid.Col span={{ base: 12, sm: 6 }}>
-                <SummaryFact label="Tasks" value={String(state.overview.tasks.total)} />
+                <SummaryFact label="任务" value={String(state.overview.tasks.total)} />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
-                <SummaryFact label="Ready" value={String(state.tasks.counts.ready)} />
+                <SummaryFact label="就绪" value={String(state.tasks.counts.ready)} />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <SummaryFact
-                  label="Pending review"
+                  label="待审核"
                   value={String(state.tasks.counts.pendingReview)}
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <SummaryFact
-                  label="Deliverables"
+                  label="交付物"
                   value={String(state.overview.artifacts.deliverablesCount)}
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <SummaryFact
-                  label="Knowledge"
+                  label="知识"
                   value={String(state.overview.artifacts.knowledgeCount)}
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <SummaryFact
-                  label="Sessions"
+                  label="会话"
                   value={String(state.overview.artifacts.sessionCount)}
                 />
               </Grid.Col>
             </Grid>
-            <Alert color="blue" radius="md" title="Runtime pulse">
+            <Alert color="blue" radius="md" title="运行时脉搏">
               <Text size="sm">{state.runtime.runtime.summary}</Text>
             </Alert>
           </Stack>
@@ -169,12 +169,12 @@ export default function ProjectOverviewPage() {
       <Paper withBorder radius="md" p="md">
         <Stack gap="md">
           <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-            Task lanes
+            任务泳道
           </Text>
-          <Text fw={700}>Ready now, blocked, and pending review queues.</Text>
+          <Text fw={700}>就绪、阻塞和待审核队列。</Text>
           <SimpleGrid cols={{ base: 1, xl: 3 }} spacing="md">
             <TaskListBlock
-              title="Ready now"
+              title="立即就绪"
               items={state.tasks.ready.map((task) => ({
                 id: task.id,
                 title: task.title,
@@ -182,7 +182,7 @@ export default function ProjectOverviewPage() {
               }))}
             />
             <TaskListBlock
-              title="Blocked"
+              title="阻塞"
               items={state.tasks.blocked.map((task) => ({
                 id: task.id,
                 title: task.title,
@@ -190,7 +190,7 @@ export default function ProjectOverviewPage() {
               }))}
             />
             <TaskListBlock
-              title="Pending review"
+              title="待审核"
               items={state.tasks.pendingReview.map((task) => ({
                 id: task.id,
                 title: task.title,
@@ -221,7 +221,7 @@ function TaskListBlock({
       <Stack mt="sm" gap="sm">
         {items.length === 0 ? (
           <Text size="sm" c="dimmed">
-            No tasks in this lane.
+            此泳道暂无任务。
           </Text>
         ) : (
           items.slice(0, 4).map((item) => (
@@ -266,10 +266,10 @@ function PageLoading({ label }: { label: string }) {
 
 function NavigateBackHome({ message }: { message: string }) {
   return (
-    <Alert color="red" radius="xl" title="Project view unavailable">
+    <Alert color="red" radius="xl" title="项目视图不可用">
       <Text>{message}</Text>
       <Text mt="sm" component={Link} to="/">
-        Back to projects
+        返回项目列表
       </Text>
     </Alert>
   );

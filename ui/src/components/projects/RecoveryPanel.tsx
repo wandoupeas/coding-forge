@@ -12,11 +12,11 @@ export default function RecoveryPanel({ recovery }: RecoveryPanelProps) {
         <Group justify="space-between" align="flex-start">
           <Stack gap={6}>
             <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-              Summary
+              摘要
             </Text>
-            <Text fw={700}>Recovery posture and current route summary.</Text>
+            <Text fw={700}>恢复态势与当前路由摘要。</Text>
             <Text size="sm" c="dimmed">
-              A compact summary of resume pressure, drift, and what to read before continuing.
+              恢复压力、漂移和继续工作前需阅读内容的紧凑摘要。
             </Text>
           </Stack>
           <Badge
@@ -31,21 +31,21 @@ export default function RecoveryPanel({ recovery }: RecoveryPanelProps) {
         <Grid gutter="sm">
           <Grid.Col span={{ base: 12, sm: 4 }}>
             <SummaryFact
-              label="Doctor"
-              value={`${recovery.doctor.summary.fail} fail / ${recovery.doctor.summary.warn} warn`}
+              label="Doctor 诊断"
+              value={`${recovery.doctor.summary.fail} 失败 / ${recovery.doctor.summary.warn} 警告`}
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 4 }}>
-            <SummaryFact label="Drift" value={recovery.contextDrift.status} />
+            <SummaryFact label="漂移" value={recovery.contextDrift.status} />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 4 }}>
-            <SummaryFact label="Thread" value={recovery.threadLinkage.status} />
+            <SummaryFact label="线程" value={recovery.threadLinkage.status} />
           </Grid.Col>
         </Grid>
 
         <Paper withBorder radius="md" p="md">
           <Text className="forge-mono" size="xs" tt="uppercase" c="rgba(248,243,232,0.6)">
-            Next action
+            下一步操作
           </Text>
           <Text mt={8} size="sm" lh={1.6}>
             {recovery.resume.nextAction}
@@ -56,11 +56,11 @@ export default function RecoveryPanel({ recovery }: RecoveryPanelProps) {
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Paper withBorder radius="md" p="md">
               <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-                Read first
+                优先阅读
               </Text>
               {recovery.resume.shouldRead.length === 0 ? (
                 <Text mt="sm" size="sm" c="dimmed">
-                  No additional files were recommended for this snapshot.
+                  当前快照未推荐额外文件。
                 </Text>
               ) : (
                 <List mt="sm" spacing="xs" size="sm">
@@ -76,11 +76,11 @@ export default function RecoveryPanel({ recovery }: RecoveryPanelProps) {
             </Paper>
           </Grid.Col>
           <Grid.Col span={{ base: 12, md: 6 }}>
-            <Alert color={recovery.canProceed ? 'green' : 'orange'} radius="md" title="Can proceed">
+            <Alert color={recovery.canProceed ? 'green' : 'orange'} radius="md" title="可继续">
               <Text size="sm">
                 {recovery.canProceed
-                  ? 'The current recovery snapshot can proceed without manual intervention.'
-                  : 'This snapshot is blocked. Check the recovery rail before continuing.'}
+                  ? '当前恢复快照可以直接继续，无需人工干预。'
+                  : '此快照处于阻塞状态，请先检查恢复侧栏再继续。'}
               </Text>
             </Alert>
           </Grid.Col>

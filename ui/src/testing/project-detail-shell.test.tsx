@@ -331,32 +331,32 @@ describe('project detail shell', () => {
   it('renders tabs with a persistent recovery rail on the summary route', async () => {
     renderApp('/projects/alpha');
 
-    expect(await screen.findByRole('tab', { name: /summary/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /evidence/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /runtime/i })).toBeInTheDocument();
-    const recoveryRail = screen.getByRole('complementary', { name: /recovery rail/i });
+    expect(await screen.findByRole('tab', { name: /摘要/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /证据/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /运行时/i })).toBeInTheDocument();
+    const recoveryRail = screen.getByRole('complementary', { name: /恢复侧栏/i });
     expect(recoveryRail).toBeInTheDocument();
-    expect(within(recoveryRail).getByText(/^Next action$/i)).toBeInTheDocument();
+    expect(within(recoveryRail).getByText(/^下一步操作$/i)).toBeInTheDocument();
     expect(within(recoveryRail).getByText(mockRecovery.resume.nextAction)).toBeInTheDocument();
-    expect(screen.getByText(/^Ready now$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^立即就绪$/i)).toBeInTheDocument();
   });
 
   it('reuses the same shell on the evidence route', async () => {
     renderApp('/projects/alpha/artifacts');
 
-    const evidenceTab = await screen.findByRole('tab', { name: /evidence/i });
+    const evidenceTab = await screen.findByRole('tab', { name: /证据/i });
     expect(evidenceTab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('complementary', { name: /recovery rail/i })).toBeInTheDocument();
-    expect(screen.getByText(/preview/i)).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: /恢复侧栏/i })).toBeInTheDocument();
+    expect(screen.getByText(/预览/i)).toBeInTheDocument();
   });
 
   it('reuses the same shell on the runtime route', async () => {
     renderApp('/projects/alpha/runtime');
 
-    const runtimeTab = await screen.findByRole('tab', { name: /runtime/i });
+    const runtimeTab = await screen.findByRole('tab', { name: /运行时/i });
     expect(runtimeTab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('complementary', { name: /recovery rail/i })).toBeInTheDocument();
-    expect(screen.getByText(/recent events/i)).toBeInTheDocument();
-    expect(screen.getByText(/snapshots comparison/i)).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: /恢复侧栏/i })).toBeInTheDocument();
+    expect(screen.getByText(/最近事件/i)).toBeInTheDocument();
+    expect(screen.getByText(/快照对照/i)).toBeInTheDocument();
   });
 });

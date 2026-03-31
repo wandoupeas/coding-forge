@@ -20,13 +20,13 @@ export default function ProjectRecoveryRail({ recovery }: ProjectRecoveryRailPro
     'none';
 
   return (
-    <Paper component="aside" aria-label="Recovery rail" withBorder radius="md" p="md">
+    <Paper component="aside" aria-label="恢复侧栏" withBorder radius="md" p="md">
       <Stack gap="md">
         <Stack gap={4}>
           <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-            Recovery Rail
+            恢复侧栏
           </Text>
-          <Text fw={700}>Doctor signals, next action, and workspace context.</Text>
+          <Text fw={700}>Doctor 信号、下一步操作和工作区上下文。</Text>
           <Stack gap={6}>
             <Badge
               variant="light"
@@ -54,41 +54,41 @@ export default function ProjectRecoveryRail({ recovery }: ProjectRecoveryRailPro
 
         <Divider />
 
-        <Section title="Next action">
+        <Section title="下一步操作">
           <Text size="sm" lh={1.6}>
             {recovery.resume.nextAction}
           </Text>
         </Section>
 
-        <Section title="Doctor">
-          <KeyValueRow label="summary" value={doctorSummary} />
-          <KeyValueRow label="can proceed" value={recovery.canProceed ? 'yes' : 'no'} />
+        <Section title="Doctor 诊断">
+          <KeyValueRow label="摘要" value={doctorSummary} />
+          <KeyValueRow label="可继续" value={recovery.canProceed ? '是' : '否'} />
         </Section>
 
-        <Section title="Workflow context">
-          <KeyValueRow label="workflow" value={recovery.workflowContext?.workflow ?? 'none'} />
-          <KeyValueRow label="branch" value={recovery.workflowContext?.branch ?? 'none'} />
-          <KeyValueRow label="worktree" value={recovery.workflowContext?.worktreePath ?? 'none'} />
-          <KeyValueRow label="thread" value={recovery.workflowContext?.threadId ?? 'none'} />
+        <Section title="工作流上下文">
+          <KeyValueRow label="工作流" value={recovery.workflowContext?.workflow ?? 'none'} />
+          <KeyValueRow label="分支" value={recovery.workflowContext?.branch ?? 'none'} />
+          <KeyValueRow label="工作树" value={recovery.workflowContext?.worktreePath ?? 'none'} />
+          <KeyValueRow label="线程" value={recovery.workflowContext?.threadId ?? 'none'} />
           <KeyValueRow
-            label="compact from"
+            label="压缩来源"
             value={recovery.workflowContext?.compactFromSession ?? 'none'}
           />
-          <KeyValueRow label="missing" value={firstMissingWorkflowArtifact} />
+          <KeyValueRow label="缺失" value={firstMissingWorkflowArtifact} />
         </Section>
 
-        <Section title="Thread linkage">
-          <KeyValueRow label="status" value={recovery.threadLinkage.status} />
-          <KeyValueRow label="workflow" value={recovery.threadLinkage.workflow ?? 'none'} />
-          <KeyValueRow label="branch" value={recovery.threadLinkage.branch ?? 'none'} />
-          <KeyValueRow label="worktree" value={recovery.threadLinkage.worktreePath ?? 'none'} />
-          <KeyValueRow label="missing" value={firstMissingThreadArtifact} />
+        <Section title="线程关联">
+          <KeyValueRow label="状态" value={recovery.threadLinkage.status} />
+          <KeyValueRow label="工作流" value={recovery.threadLinkage.workflow ?? 'none'} />
+          <KeyValueRow label="分支" value={recovery.threadLinkage.branch ?? 'none'} />
+          <KeyValueRow label="工作树" value={recovery.threadLinkage.worktreePath ?? 'none'} />
+          <KeyValueRow label="缺失" value={firstMissingThreadArtifact} />
         </Section>
 
-        <Section title="Recommended actions">
+        <Section title="建议操作">
           {recovery.recommendedActions.length === 0 ? (
             <Text size="sm" c="dimmed">
-              No extra actions were recommended by the current recovery snapshot.
+              当前恢复快照未产生额外建议。
             </Text>
           ) : (
             <List spacing="xs" size="sm">

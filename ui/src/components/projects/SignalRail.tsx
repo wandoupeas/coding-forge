@@ -12,21 +12,21 @@ export default function SignalRail({ projects }: SignalRailProps) {
   const hiddenSignalCount = signals.length - visibleSignals.length;
 
   return (
-    <Paper component="aside" aria-label="Signal rail" withBorder radius="md" p="md">
+    <Paper component="aside" aria-label="信号栏" withBorder radius="md" p="md">
       <Stack gap="sm">
         <Stack gap={4}>
           <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-            Signal Rail
+            信号栏
           </Text>
-          <Text fw={700}>Concise alerts and snapshot deltas.</Text>
+          <Text fw={700}>简明告警与快照变化。</Text>
           <Text size="sm" c="dimmed">
-            Anything blocked, drifting, or waiting on review is compressed here.
+            阻塞、漂移或待审核的项目都压缩在此处。
           </Text>
         </Stack>
 
         {visibleSignals.length === 0 ? (
-          <Alert color="green" radius="md" title="Snapshot clear">
-            No urgent project signals were produced by the current dashboard snapshot.
+          <Alert color="green" radius="md" title="快照正常">
+            当前仪表盘快照未产生紧急项目信号。
           </Alert>
         ) : (
           visibleSignals.map((signal) => (
@@ -51,8 +51,8 @@ export default function SignalRail({ projects }: SignalRailProps) {
         )}
 
         {hiddenSignalCount > 0 ? (
-          <Alert color="gray" radius="md" title={`+${hiddenSignalCount} more signals`}>
-            The rail is capped to keep the homepage summary concise.
+          <Alert color="gray" radius="md" title={`还有 ${hiddenSignalCount} 条信号`}>
+            信号栏已设上限，以保持首页摘要简洁。
           </Alert>
         ) : null}
       </Stack>

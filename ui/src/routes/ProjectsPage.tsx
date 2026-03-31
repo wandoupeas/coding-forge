@@ -77,38 +77,38 @@ export default function ProjectsPage() {
       <Stack gap="xl">
         <Group align="stretch" gap="lg" grow>
           <TopMetric
-            label="Scan Root"
-            value="Loading..."
-            caption="Waiting for the first workspace snapshot"
+            label="扫描根目录"
+            value="加载中..."
+            caption="正在等待首次工作区快照"
           />
-          <TopMetric label="Projects" value="0" caption="No project records loaded yet" />
+          <TopMetric label="项目" value="0" caption="尚未加载任何项目记录" />
           <TopMetric
-            label="Signals"
+            label="信号"
             value="0"
-            caption="Pending review and drift signals will appear here"
+            caption="待审核和漂移信号将显示在此处"
           />
         </Group>
 
         <Grid gutter="md">
           <Grid.Col span={{ base: 12, lg: 3 }}>
-            <SectionShell title="Project Index">
+            <SectionShell title="项目索引">
               <Loader color="forgeRust" />
               <Text mt="sm" c="dimmed">
-                Scanning workspaces and assembling the project index...
+                正在扫描工作区并组装项目索引...
               </Text>
             </SectionShell>
           </Grid.Col>
           <Grid.Col span={{ base: 12, lg: 6 }}>
-            <SectionShell title="Workspace Ledger">
+            <SectionShell title="工作区台账">
               <Text c="dimmed">
-                A compact project table will land here once the snapshot is ready.
+                快照准备就绪后，紧凑的项目表格将显示在此处。
               </Text>
             </SectionShell>
           </Grid.Col>
           <Grid.Col span={{ base: 12, lg: 3 }}>
-            <SectionShell title="Signal Rail">
+            <SectionShell title="信号栏">
               <Text c="dimmed">
-                This rail will collect blocked, drifted, and pending-review signals.
+                此栏将收集阻塞、漂移和待审核信号。
               </Text>
             </SectionShell>
           </Grid.Col>
@@ -119,8 +119,8 @@ export default function ProjectsPage() {
 
   if (state.status === 'error' || !state.snapshot) {
     return (
-      <Alert color="red" radius="xl" title="UI data source unavailable">
-        {state.error ?? 'Unable to load project monitoring data.'}
+      <Alert color="red" radius="xl" title="UI 数据源不可用">
+        {state.error ?? '无法加载项目监控数据。'}
       </Alert>
     );
   }
@@ -130,42 +130,38 @@ export default function ProjectsPage() {
   return (
     <Stack gap="xl">
       {state.error ? (
-        <Alert color="orange" radius="xl" title="Using last successful scan">
+        <Alert color="orange" radius="xl" title="正在使用上次成功的扫描结果">
           {state.error}
         </Alert>
       ) : null}
 
       <Group align="stretch" gap="lg" grow>
         <TopMetric
-          label="Scan Root"
+          label="扫描根目录"
           value={state.snapshot.rootPath}
-          caption={`Last refresh ${formatTimestamp(state.snapshot.fetchedAt)}`}
+          caption={`上次刷新 ${formatTimestamp(state.snapshot.fetchedAt)}`}
         />
         <TopMetric
-          label="Projects"
+          label="项目"
           value={String(state.snapshot.projects.length)}
-          caption={`${health.healthy} healthy / ${health.watch} watch / ${health.blocked} blocked`}
+          caption={`${health.healthy} 正常 / ${health.watch} 关注 / ${health.blocked} 阻塞`}
         />
         <TopMetric
-          label="Signals"
+          label="信号"
           value={String(health.pendingReview)}
-          caption={`${health.pendingReview} project${
-            health.pendingReview === 1 ? '' : 's'
-          } with pending review artifacts`}
+          caption={`${health.pendingReview} 个项目有待审核产物`}
         />
       </Group>
 
       <Stack gap={4}>
         <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-          Multi-project overview
+          多项目总览
         </Text>
         <Title order={2} style={{ fontSize: 'clamp(1.6rem, 2vw, 2.5rem)' }}>
-          One board for drift, blockage, recovery, and runtime pulse.
+          漂移、阻塞、恢复和运行时脉搏，一目了然。
         </Title>
         <Text c="dimmed" style={{ maxWidth: 840 }}>
-          The homepage now acts as a compact control surface: the project index is the entry rail,
-          the workspace ledger shows the current snapshot, and the signal rail compresses anything
-          that needs attention.
+          首页作为紧凑控制面：项目索引是入口导航，工作区台账展示当前快照，信号栏压缩所有需要关注的信息。
         </Text>
       </Stack>
 
