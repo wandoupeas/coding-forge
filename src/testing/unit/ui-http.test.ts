@@ -51,6 +51,8 @@ describe('ui http', () => {
     ]);
 
     expect(projects.status).toBe(200);
+    expect(projects.body.rootPath).toBe(workspaceDir);
+    expect(projects.body.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(projects.body.projects).toHaveLength(1);
     expect(projects.body.projects[0].id).toBe(projectId);
 

@@ -28,6 +28,8 @@ export async function handleProjectsRequest(context: UiHttpContext): Promise<UiJ
   return {
     status: 200,
     body: {
+      rootPath: context.rootPath,
+      fetchedAt: new Date().toISOString(),
       projects
     }
   };

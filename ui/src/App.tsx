@@ -1,19 +1,21 @@
+import { MantineProvider } from '@mantine/core';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import AppFrame from './components/layout/AppFrame';
+import ProjectsPage from './routes/ProjectsPage';
+import { forgeGlobalStyles, forgeTheme } from './theme';
+
 export default function App() {
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        fontFamily: 'system-ui, sans-serif',
-        background: '#f5f5f5',
-        color: '#111827'
-      }}
-    >
-      <section style={{ textAlign: 'center' }}>
-        <h1 style={{ margin: 0, fontSize: '2rem' }}>WebForge UI</h1>
-        <p style={{ margin: '0.75rem 0 0' }}>Placeholder shell for the web UI.</p>
-      </section>
-    </main>
+    <MantineProvider theme={forgeTheme}>
+      <style>{forgeGlobalStyles}</style>
+      <BrowserRouter>
+        <AppFrame>
+          <Routes>
+            <Route path="/" element={<ProjectsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppFrame>
+      </BrowserRouter>
+    </MantineProvider>
   );
 }
