@@ -1,14 +1,14 @@
 import {
   Alert,
-  Box,
   Group,
   Loader,
+  Paper,
   SimpleGrid,
   Stack,
   Text,
   Title
 } from '@mantine/core';
-import { startTransition, useEffect, useState } from 'react';
+import { startTransition, useEffect, useState, type ReactNode } from 'react';
 import ProjectCard from '../components/projects/ProjectCard';
 import { fetchProjectsDashboard, type ProjectsDashboardSnapshot } from '../lib/api';
 
@@ -70,20 +70,42 @@ export default function ProjectsPage() {
 
   if (state.status === 'loading' && !state.snapshot) {
     return (
-      <Box
-        style={{
-          minHeight: '55vh',
-          display: 'grid',
-          placeItems: 'center'
-        }}
-      >
-        <Stack align="center" gap="sm">
-          <Loader color="forgeRust" />
-          <Text className="forge-mono" size="sm">
-            Scanning workspaces and assembling control cards...
-          </Text>
-        </Stack>
-      </Box>
+      <Stack gap="xl">
+        <Group align="stretch" gap="lg" grow>
+          <TopMetric
+            label="Scan Root"
+            value="Loading..."
+            caption="Waiting for the first workspace snapshot"
+          />
+          <TopMetric label="Projects" value="0" caption="No project records loaded yet" />
+          <TopMetric
+            label="Signals"
+            value="0"
+            caption="Pending review and drift signals will appear here"
+          />
+        </Group>
+
+        <Group align="stretch" grow>
+          <SectionShell title="Project Index">
+            <Loader color="forgeRust" />
+            <Text mt="sm" c="dimmed">
+              Scanning workspaces and assembling the project index...
+            </Text>
+          </SectionShell>
+
+          <SectionShell title="Workspace Ledger">
+            <Text c="dimmed">
+              A compact project table will land here once the snapshot is ready.
+            </Text>
+          </SectionShell>
+
+          <SectionShell title="Signal Rail">
+            <Text c="dimmed">
+              This rail will collect blocked, drifted, and pending-review signals.
+            </Text>
+          </SectionShell>
+        </Group>
+      </Stack>
     );
   }
 
@@ -132,33 +154,38 @@ export default function ProjectsPage() {
         </Title>
       </Stack>
 
-      {state.snapshot.projects.length === 0 ? (
-        <Box
-          style={{
-            padding: '3rem',
-            borderRadius: 28,
-            border: '1px dashed rgba(22,32,40,0.18)',
-            background: 'rgba(255,255,255,0.5)'
-          }}
-        >
-          <Title order={3}>No WebForge projects found</Title>
-          <Text mt="sm" c="dimmed" maw={560}>
-            Point <code>webforge ui --root &lt;path&gt;</code> at a directory containing one or
-            more repositories with <code>.webforge/</code> state, then refresh this page.
+      <Group align="stretch" grow>
+        <SectionShell title="Project Index">
+          {state.snapshot.projects.length === 0 ? (
+            <Text c="dimmed">
+              No WebForge projects found.
+            </Text>
+          ) : (
+            <SimpleGrid cols={1} spacing="sm">
+              {state.snapshot.projects.map((entry) => (
+                <ProjectCard
+                  key={entry.project.id}
+                  project={entry.project}
+                  overview={entry.overview}
+                  error={entry.error}
+                />
+              ))}
+            </SimpleGrid>
+          )}
+        </SectionShell>
+
+        <SectionShell title="Workspace Ledger">
+          <Text c="dimmed">
+            A table-oriented ledger will replace this placeholder in the next task.
           </Text>
-        </Box>
-      ) : (
-        <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
-          {state.snapshot.projects.map((entry) => (
-            <ProjectCard
-              key={entry.project.id}
-              project={entry.project}
-              overview={entry.overview}
-              error={entry.error}
-            />
-          ))}
-        </SimpleGrid>
-      )}
+        </SectionShell>
+
+        <SectionShell title="Signal Rail">
+          <Text c="dimmed">
+            This rail will consolidate drift, review, and recovery signals.
+          </Text>
+        </SectionShell>
+      </Group>
     </Stack>
   );
 }
@@ -173,33 +200,30 @@ function TopMetric({
   caption: string;
 }) {
   return (
-    <Box
-      style={{
-        padding: '1rem 1.15rem',
-        borderRadius: 22,
-        border: '1px solid rgba(22,32,40,0.1)',
-        background: 'rgba(255,255,255,0.64)',
-        boxShadow: '0 12px 32px rgba(22, 32, 40, 0.06)'
-      }}
-    >
-      <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-        {label}
-      </Text>
-      <Title
-        order={3}
-        mt={10}
-        style={{
-          fontSize: '1.35rem',
-          lineHeight: 1.05,
-          wordBreak: 'break-word'
-        }}
-      >
-        {value}
-      </Title>
-      <Text mt={10} size="sm" c="dimmed">
-        {caption}
-      </Text>
-    </Box>
+    <Paper withBorder radius="md" p="md">
+      <Stack gap="xs">
+        <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
+          {label}
+        </Text>
+        <Title order={4} style={{ lineHeight: 1.15, wordBreak: 'break-word' }}>
+          {value}
+        </Title>
+        <Text size="sm" c="dimmed">
+          {caption}
+        </Text>
+      </Stack>
+    </Paper>
+  );
+}
+
+function SectionShell({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Paper withBorder radius="md" p="md">
+      <Stack gap="sm">
+        <Text fw={700}>{title}</Text>
+        {children}
+      </Stack>
+    </Paper>
   );
 }
 
