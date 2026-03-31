@@ -50,6 +50,18 @@ npm install
 npm run build
 ```
 
+如果你是 npm 使用者，安装方式会是：
+
+```bash
+npm install -g @wandoupeas/coding-forge
+```
+
+或者直接临时运行：
+
+```bash
+npx @wandoupeas/coding-forge --help
+```
+
 然后初始化一个新仓库：
 
 ```bash
@@ -102,12 +114,26 @@ cd demo-app
 node /path/to/work-forge/dist/cli/index.js onboard --json
 ```
 
+如果你已经通过 npm 安装，则等价命令是：
+
+```bash
+webforge init demo-app
+cd demo-app
+webforge onboard --json
+```
+
 `init` 会同时生成带 onboarding contract 的 `AGENTS.md`、`docs/agent-guide.md`、`docs/methodology/superpowers-integration.md`，以及可直接照着执行的 `docs/examples/agent-onboarding-protocol.md`。初始化结束时还会立即跑一次 post-init self-check，确认 `doctor` 和 `onboard` 与这些协议文件保持一致。
 
 如果你想显式重跑这次自检，可以直接执行：
 
 ```bash
 node /path/to/work-forge/dist/cli/index.js verify init demo-app --json
+```
+
+如果你是 npm 安装用户，则直接执行：
+
+```bash
+webforge verify init demo-app --json
 ```
 
 然后：
