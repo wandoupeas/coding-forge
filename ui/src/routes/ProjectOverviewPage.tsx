@@ -1,10 +1,9 @@
-import { Alert, Box, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Alert, Box, Grid, Loader, Paper, SimpleGrid, Stack, Text } from '@mantine/core';
 import { startTransition, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import ProjectDetailShell from '../components/projects/ProjectDetailShell';
 import RecoveryPanel from '../components/projects/RecoveryPanel';
 import RuntimeEventsPanel from '../components/projects/RuntimeEventsPanel';
-import ProjectStatusSummary from '../components/projects/ProjectStatusSummary';
 import {
   fetchProjectOverview,
   fetchProjectRecovery,
@@ -120,122 +119,90 @@ export default function ProjectOverviewPage() {
         </Alert>
       ) : null}
 
-      <Group grow align="stretch">
-        <MetricCard label="Tasks" value={String(state.overview.tasks.total)} />
-        <MetricCard
-          label="Deliverables"
-          value={String(state.overview.artifacts.deliverablesCount)}
-        />
-        <MetricCard label="Pending review" value={String(state.tasks.counts.pendingReview)} />
-        <MetricCard label="Doctor fails" value={String(state.overview.recovery.doctorSummary.fail)} />
-        <MetricCard label="Runtime status" value={state.overview.runtime.status} />
-      </Group>
-
-      <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="md">
         <RecoveryPanel recovery={state.recovery} />
-        <Box
-          style={{
-            padding: '1.15rem',
-            borderRadius: 24,
-            border: '1px solid rgba(22,32,40,0.1)',
-            background: 'rgba(255,255,255,0.72)'
-          }}
-        >
+        <Paper withBorder radius="md" p="md">
           <Stack gap="lg">
             <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-              Tasks
+              Artifact pulse
             </Text>
-            <Title order={3} style={{ fontSize: '1.45rem' }}>
-              Task distribution and review pressure.
-            </Title>
-            <ProjectStatusSummary
-              ready={state.tasks.counts.ready}
-              blocked={state.tasks.counts.blocked}
-              pendingReview={state.tasks.counts.pendingReview}
-              total={state.tasks.counts.total}
-            />
-            <Group grow>
-              <MetricCard label="Ready" value={String(state.tasks.counts.ready)} compact />
-              <MetricCard label="Blocked" value={String(state.tasks.counts.blocked)} compact />
-              <MetricCard label="Completed" value={String(state.tasks.counts.completed)} compact />
-            </Group>
-            <Group grow>
-              <MetricCard
-                label="Knowledge"
-                value={String(state.overview.artifacts.knowledgeCount)}
-                compact
-              />
-              <MetricCard
-                label="Deliverables"
-                value={String(state.overview.artifacts.deliverablesCount)}
-                compact
-              />
-              <MetricCard
-                label="Sessions"
-                value={String(state.overview.artifacts.sessionCount)}
-                compact
-              />
-            </Group>
-            <Group grow align="stretch">
-              <TaskListBlock
-                title="Ready now"
-                items={state.tasks.ready.map((task) => ({
-                  id: task.id,
-                  title: task.title,
-                  meta: `${task.assignee} · P${task.priority}`
-                }))}
-              />
-              <TaskListBlock
-                title="Blocked"
-                items={state.tasks.blocked.map((task) => ({
-                  id: task.id,
-                  title: task.title,
-                  meta: `${task.assignee} · ${task.blockedBy.join(', ') || 'no blocker'}`
-                }))}
-              />
-              <TaskListBlock
-                title="Pending review"
-                items={state.tasks.pendingReview.map((task) => ({
-                  id: task.id,
-                  title: task.title,
-                  meta: `${task.assignee} · P${task.priority}`
-                }))}
-              />
-            </Group>
+            <Text fw={700}>Current task pressure, artifact counts, and runtime pulse.</Text>
+            <Grid gutter="sm">
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <SummaryFact label="Tasks" value={String(state.overview.tasks.total)} />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <SummaryFact label="Ready" value={String(state.tasks.counts.ready)} />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <SummaryFact
+                  label="Pending review"
+                  value={String(state.tasks.counts.pendingReview)}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <SummaryFact
+                  label="Deliverables"
+                  value={String(state.overview.artifacts.deliverablesCount)}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <SummaryFact
+                  label="Knowledge"
+                  value={String(state.overview.artifacts.knowledgeCount)}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <SummaryFact
+                  label="Sessions"
+                  value={String(state.overview.artifacts.sessionCount)}
+                />
+              </Grid.Col>
+            </Grid>
+            <Alert color="blue" radius="md" title="Runtime pulse">
+              <Text size="sm">{state.runtime.runtime.summary}</Text>
+            </Alert>
           </Stack>
-        </Box>
+        </Paper>
       </SimpleGrid>
+
+      <Paper withBorder radius="md" p="md">
+        <Stack gap="md">
+          <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
+            Task lanes
+          </Text>
+          <Text fw={700}>Ready now, blocked, and pending review queues.</Text>
+          <SimpleGrid cols={{ base: 1, xl: 3 }} spacing="md">
+            <TaskListBlock
+              title="Ready now"
+              items={state.tasks.ready.map((task) => ({
+                id: task.id,
+                title: task.title,
+                meta: `${task.assignee} · P${task.priority}`
+              }))}
+            />
+            <TaskListBlock
+              title="Blocked"
+              items={state.tasks.blocked.map((task) => ({
+                id: task.id,
+                title: task.title,
+                meta: `${task.assignee} · ${task.blockedBy.join(', ') || 'no blocker'}`
+              }))}
+            />
+            <TaskListBlock
+              title="Pending review"
+              items={state.tasks.pendingReview.map((task) => ({
+                id: task.id,
+                title: task.title,
+                meta: `${task.assignee} · P${task.priority}`
+              }))}
+            />
+          </SimpleGrid>
+        </Stack>
+      </Paper>
 
       <RuntimeEventsPanel runtime={state.runtime} recovery={state.recovery} />
     </ProjectDetailShell>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  compact = false
-}: {
-  label: string;
-  value: string;
-  compact?: boolean;
-}) {
-  return (
-    <Box
-      style={{
-        padding: compact ? '0.85rem 0.95rem' : '1rem 1.05rem',
-        borderRadius: 20,
-        border: '1px solid rgba(22,32,40,0.1)',
-        background: 'rgba(255,255,255,0.62)'
-      }}
-    >
-      <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
-        {label}
-      </Text>
-      <Title order={compact ? 4 : 3} mt={8}>
-        {value}
-      </Title>
-    </Box>
   );
 }
 
@@ -247,15 +214,7 @@ function TaskListBlock({
   items: Array<{ id: string; title: string; meta: string }>;
 }) {
   return (
-    <Box
-      style={{
-        flex: 1,
-        padding: '0.95rem 1rem',
-        borderRadius: 18,
-        border: '1px solid rgba(22,32,40,0.08)',
-        background: 'rgba(255,255,255,0.54)'
-      }}
-    >
+    <Paper withBorder radius="md" p="md">
       <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
         {title}
       </Text>
@@ -266,24 +225,29 @@ function TaskListBlock({
           </Text>
         ) : (
           items.slice(0, 4).map((item) => (
-            <Box
-              key={item.id}
-              style={{
-                padding: '0.7rem 0.8rem',
-                borderRadius: 14,
-                background: 'rgba(255,255,255,0.68)',
-                border: '1px solid rgba(22,32,40,0.08)'
-              }}
-            >
+            <Paper key={item.id} withBorder radius="md" p="sm">
               <Text fw={600}>{item.title}</Text>
               <Text mt={4} className="forge-mono" size="xs" c="dimmed">
                 {item.id} · {item.meta}
               </Text>
-            </Box>
+            </Paper>
           ))
         )}
       </Stack>
-    </Box>
+    </Paper>
+  );
+}
+
+function SummaryFact({ label, value }: { label: string; value: string }) {
+  return (
+    <Paper withBorder radius="md" p="sm">
+      <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
+        {label}
+      </Text>
+      <Text className="forge-mono" size="sm" mt={6}>
+        {value}
+      </Text>
+    </Paper>
   );
 }
 

@@ -338,6 +338,7 @@ describe('project detail shell', () => {
     expect(recoveryRail).toBeInTheDocument();
     expect(within(recoveryRail).getByText(/^Next action$/i)).toBeInTheDocument();
     expect(within(recoveryRail).getByText(mockRecovery.resume.nextAction)).toBeInTheDocument();
+    expect(screen.getByText(/^Ready now$/i)).toBeInTheDocument();
   });
 
   it('reuses the same shell on the evidence route', async () => {
@@ -355,6 +356,7 @@ describe('project detail shell', () => {
     const runtimeTab = await screen.findByRole('tab', { name: /runtime/i });
     expect(runtimeTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('complementary', { name: /recovery rail/i })).toBeInTheDocument();
-    expect(screen.getByText(/recent runtime events/i)).toBeInTheDocument();
+    expect(screen.getByText(/recent events/i)).toBeInTheDocument();
+    expect(screen.getByText(/snapshots comparison/i)).toBeInTheDocument();
   });
 });

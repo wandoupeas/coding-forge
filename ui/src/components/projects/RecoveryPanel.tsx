@@ -1,4 +1,4 @@
-import { Box, Group, List, Stack, Text, ThemeIcon, Title } from '@mantine/core';
+import { Alert, Badge, Grid, Group, List, Paper, Stack, Text } from '@mantine/core';
 import type { ApiProjectRecovery } from '../../lib/api';
 
 interface RecoveryPanelProps {
@@ -7,159 +7,98 @@ interface RecoveryPanelProps {
 
 export default function RecoveryPanel({ recovery }: RecoveryPanelProps) {
   return (
-    <Box
-      style={{
-        padding: '1.15rem',
-        borderRadius: 24,
-        background: 'rgba(22, 32, 40, 0.94)',
-        color: '#f8f3e8'
-      }}
-    >
+    <Paper withBorder radius="md" p="md">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-start">
           <Stack gap={6}>
-            <Text className="forge-mono" size="xs" tt="uppercase" c="rgba(248,243,232,0.68)">
-              Recovery
+            <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
+              Summary
             </Text>
-            <Title order={3} style={{ color: '#fff7eb', fontSize: '1.45rem' }}>
-              Resume, drift, and recovery posture in one panel.
-            </Title>
+            <Text fw={700}>Recovery posture and current route summary.</Text>
+            <Text size="sm" c="dimmed">
+              A compact summary of resume pressure, drift, and what to read before continuing.
+            </Text>
           </Stack>
-          <StatusChip label={recovery.status} />
+          <Badge
+            variant="light"
+            color={recovery.status === 'ready' ? 'forgeLime' : 'forgeRust'}
+            radius="xl"
+          >
+            {recovery.status}
+          </Badge>
         </Group>
 
-        <Group gap="sm" wrap="wrap">
-          <Fact label="Doctor" value={`${recovery.doctor.summary.fail} fail / ${recovery.doctor.summary.warn} warn`} />
-          <Fact label="Drift" value={recovery.contextDrift.status} />
-          <Fact label="Thread" value={recovery.threadLinkage.status} />
-        </Group>
+        <Grid gutter="sm">
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <SummaryFact
+              label="Doctor"
+              value={`${recovery.doctor.summary.fail} fail / ${recovery.doctor.summary.warn} warn`}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <SummaryFact label="Drift" value={recovery.contextDrift.status} />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <SummaryFact label="Thread" value={recovery.threadLinkage.status} />
+          </Grid.Col>
+        </Grid>
 
-        <Box
-          style={{
-            padding: '0.95rem 1rem',
-            borderRadius: 18,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.08)'
-          }}
-        >
+        <Paper withBorder radius="md" p="md">
           <Text className="forge-mono" size="xs" tt="uppercase" c="rgba(248,243,232,0.6)">
             Next action
           </Text>
-          <Text mt={8} lh={1.6}>
+          <Text mt={8} size="sm" lh={1.6}>
             {recovery.resume.nextAction}
           </Text>
-        </Box>
+        </Paper>
 
-        <Group align="stretch" grow>
-          <MetaColumn
-            title="Workflow context"
-            rows={[
-              ['workflow', recovery.workflowContext?.workflow ?? 'none'],
-              ['branch', recovery.workflowContext?.branch ?? 'none'],
-              ['worktree', recovery.workflowContext?.worktreePath ?? 'none'],
-              ['thread', recovery.workflowContext?.threadId ?? 'none'],
-              ['compact', recovery.workflowContext?.compactFromSession ?? 'none']
-            ]}
-          />
-          <MetaColumn
-            title="Thread linkage"
-            rows={[
-              ['status', recovery.threadLinkage.status],
-              ['workflow', recovery.threadLinkage.workflow ?? 'none'],
-              ['branch', recovery.threadLinkage.branch ?? 'none'],
-              ['worktree', recovery.threadLinkage.worktreePath ?? 'none'],
-              [
-                'missing',
-                recovery.threadLinkage.missingArtifacts[0] ??
-                  recovery.threadLinkage.missingWorktreePath ??
-                  recovery.threadLinkage.missingThreadId ??
-                  'none'
-              ]
-            ]}
-          />
-        </Group>
-
-        <Box>
-          <Text className="forge-mono" size="xs" tt="uppercase" c="rgba(248,243,232,0.6)">
-            Recommended actions
-          </Text>
-          <List mt="sm" spacing="xs" icon={<ThemeIcon radius="xl" size={18} color="forgeLime">•</ThemeIcon>}>
-            {recovery.recommendedActions.slice(0, 4).map((action) => (
-              <List.Item key={action}>
-                <Text size="sm" lh={1.55}>
-                  {action}
+        <Grid gutter="sm">
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Paper withBorder radius="md" p="md">
+              <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
+                Read first
+              </Text>
+              {recovery.resume.shouldRead.length === 0 ? (
+                <Text mt="sm" size="sm" c="dimmed">
+                  No additional files were recommended for this snapshot.
                 </Text>
-              </List.Item>
-            ))}
-          </List>
-        </Box>
+              ) : (
+                <List mt="sm" spacing="xs" size="sm">
+                  {recovery.resume.shouldRead.slice(0, 4).map((entry) => (
+                    <List.Item key={entry}>
+                      <Text className="forge-mono" size="sm">
+                        {entry}
+                      </Text>
+                    </List.Item>
+                  ))}
+                </List>
+              )}
+            </Paper>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Alert color={recovery.canProceed ? 'green' : 'orange'} radius="md" title="Can proceed">
+              <Text size="sm">
+                {recovery.canProceed
+                  ? 'The current recovery snapshot can proceed without manual intervention.'
+                  : 'This snapshot is blocked. Check the recovery rail before continuing.'}
+              </Text>
+            </Alert>
+          </Grid.Col>
+        </Grid>
       </Stack>
-    </Box>
+    </Paper>
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function SummaryFact({ label, value }: { label: string; value: string }) {
   return (
-    <Box
-      style={{
-        padding: '0.45rem 0.75rem',
-        borderRadius: 999,
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: 'rgba(255,255,255,0.05)'
-      }}
-    >
-      <Text className="forge-mono" size="xs" tt="uppercase" c="rgba(248,243,232,0.78)">
-        {label}: {value}
-      </Text>
-    </Box>
-  );
-}
-
-function StatusChip({ label }: { label: string }) {
-  const color = label === 'ready' ? 'rgba(151,199,31,0.18)' : 'rgba(212,78,33,0.16)';
-
-  return (
-    <Box
-      style={{
-        padding: '0.45rem 0.75rem',
-        borderRadius: 999,
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: color
-      }}
-    >
-      <Text className="forge-mono" size="xs" tt="uppercase">
+    <Paper withBorder radius="md" p="sm">
+      <Text className="forge-mono" size="xs" tt="uppercase" c="dimmed">
         {label}
       </Text>
-    </Box>
-  );
-}
-
-function MetaColumn({ title, rows }: { title: string; rows: Array<[string, string]> }) {
-  return (
-    <Box
-      style={{
-        flex: 1,
-        padding: '0.95rem 1rem',
-        borderRadius: 18,
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.08)'
-      }}
-    >
-      <Text className="forge-mono" size="xs" tt="uppercase" c="rgba(248,243,232,0.6)">
-        {title}
+      <Text className="forge-mono" size="sm" mt={6}>
+        {value}
       </Text>
-      <Stack gap={8} mt="sm">
-        {rows.map(([label, value]) => (
-          <Group key={label} justify="space-between" gap="md">
-            <Text size="sm" c="rgba(248,243,232,0.72)">
-              {label}
-            </Text>
-            <Text className="forge-mono" size="xs">
-              {value}
-            </Text>
-          </Group>
-        ))}
-      </Stack>
-    </Box>
+    </Paper>
   );
 }
