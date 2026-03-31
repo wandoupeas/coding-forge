@@ -48,11 +48,11 @@ export default function ProjectsPage() {
         }
 
         startTransition(() => {
-          setState({
-            status: 'error',
-            snapshot: null,
+          setState((current) => ({
+            status: current.snapshot ? 'ready' : 'error',
+            snapshot: current.snapshot,
             error: error instanceof Error ? error.message : String(error)
-          });
+          }));
         });
       }
     };
@@ -99,6 +99,12 @@ export default function ProjectsPage() {
 
   return (
     <Stack gap="xl">
+      {state.error ? (
+        <Alert color="orange" radius="xl" title="Using last successful scan">
+          {state.error}
+        </Alert>
+      ) : null}
+
       <Group align="stretch" gap="lg" grow>
         <TopMetric
           label="Scan Root"

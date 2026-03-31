@@ -31,7 +31,7 @@ describe('ui http', () => {
     const projectId = server.registry.projects[0]?.id;
     expect(projectId).toBeDefined();
 
-    const [projects, overview, runtime, recovery] = await Promise.all([
+    const [projects, overview, tasks, runtime, artifacts, recovery] = await Promise.all([
       routeUiRequest('GET', '/api/projects', {
         rootPath: workspaceDir,
         registry: server.registry
@@ -40,7 +40,15 @@ describe('ui http', () => {
         rootPath: workspaceDir,
         registry: server.registry
       }),
+      routeUiRequest('GET', `/api/projects/${projectId}/tasks`, {
+        rootPath: workspaceDir,
+        registry: server.registry
+      }),
       routeUiRequest('GET', `/api/projects/${projectId}/runtime`, {
+        rootPath: workspaceDir,
+        registry: server.registry
+      }),
+      routeUiRequest('GET', `/api/projects/${projectId}/artifacts`, {
         rootPath: workspaceDir,
         registry: server.registry
       }),
@@ -61,11 +69,25 @@ describe('ui http', () => {
     expect(overview.body.data.tasks.ready).toBe(1);
     expect(overview.body.data.artifacts.pendingReviewCount).toBe(1);
 
+    expect(tasks.status).toBe(200);
+    expect(tasks.body.data.counts.ready).toBe(1);
+    expect(tasks.body.data.blocked).toHaveLength(1);
+    expect(tasks.body.data.pendingReview).toHaveLength(1);
+
     expect(runtime.status).toBe(200);
     expect(runtime.body.project.name).toBe('ui-http-demo');
     expect(runtime.body.data.runtime.status).toBe('idle');
     expect(runtime.body.data.mailboxes.total).toBe(1);
     expect(runtime.body.data.superpowers.totalRuns).toBe(0);
+
+    expect(artifacts.status).toBe(200);
+    expect(artifacts.body.project.name).toBe('ui-http-demo');
+    expect(artifacts.body.data.knowledge.total).toBe(1);
+    expect(artifacts.body.data.deliverables.pendingReview).toBe(1);
+    expect(artifacts.body.data.sessions.total).toBe(1);
+    expect(artifacts.body.data.knowledge.items[0].preview).toContain('# Web UI');
+    expect(artifacts.body.data.deliverables.items[0].preview).toContain('# Draft');
+    expect(artifacts.body.data.sessions.items[0].preview).toContain('"sess-001"');
 
     expect(recovery.status).toBe(200);
     expect(recovery.body.project.name).toBe('ui-http-demo');
@@ -173,6 +195,12 @@ async function seedUiWorkspace(): Promise<string> {
         }
       }
     ]
+  });
+  await writeJson(join(root, '.webforge/sessions/sess-001.json'), {
+    id: 'sess-001',
+    name: 'ui-planning',
+    currentTask: 'T001',
+    notes: ['continue dashboard']
   });
 
   const mailbox = new Mailbox('reviewer', root);

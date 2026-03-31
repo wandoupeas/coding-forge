@@ -32,6 +32,11 @@ export interface RuntimeReadModel {
       name: string;
       createdAt: string;
     } | null;
+    items: Array<{
+      id: string;
+      name: string;
+      createdAt: string;
+    }>;
   };
   superpowers: {
     totalRuns: number;
@@ -86,7 +91,12 @@ export async function buildRuntimeReadModel(
             name: checkpoints[0].name,
             createdAt: checkpoints[0].createdAt
           }
-        : null
+        : null,
+      items: checkpoints.slice(0, 8).map((checkpoint) => ({
+        id: checkpoint.id,
+        name: checkpoint.name,
+        createdAt: checkpoint.createdAt
+      }))
     },
     superpowers: {
       totalRuns: workspace.indexes.superpowersRuns.length,

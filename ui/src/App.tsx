@@ -1,6 +1,9 @@
 import { MantineProvider } from '@mantine/core';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppFrame from './components/layout/AppFrame';
+import ProjectArtifactsPage from './routes/ProjectArtifactsPage';
+import ProjectOverviewPage from './routes/ProjectOverviewPage';
+import ProjectRuntimePage from './routes/ProjectRuntimePage';
 import ProjectsPage from './routes/ProjectsPage';
 import { forgeGlobalStyles, forgeTheme } from './theme';
 
@@ -12,6 +15,9 @@ export default function App() {
         <AppFrame>
           <Routes>
             <Route path="/" element={<ProjectsPage />} />
+            <Route path="/projects/:id" element={<ProjectOverviewPage />} />
+            <Route path="/projects/:id/artifacts" element={<ProjectArtifactsPage />} />
+            <Route path="/projects/:id/runtime" element={<ProjectRuntimePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppFrame>

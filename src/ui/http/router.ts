@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { handleProjectsRequest } from './handlers/projects.js';
 import { handleProjectOverviewRequest } from './handlers/project-overview.js';
+import { handleProjectTasksRequest } from './handlers/project-tasks.js';
+import { handleProjectArtifactsRequest } from './handlers/project-artifacts.js';
 import { handleProjectRuntimeRequest } from './handlers/project-runtime.js';
 import { handleProjectRecoveryRequest } from './handlers/project-recovery.js';
 import type { UiHttpContext, UiJsonResponse } from './handlers/projects.js';
@@ -40,6 +42,14 @@ export async function routeUiRequest(
 
   if (section === 'overview') {
     return handleProjectOverviewRequest(context, projectId);
+  }
+
+  if (section === 'tasks') {
+    return handleProjectTasksRequest(context, projectId);
+  }
+
+  if (section === 'artifacts') {
+    return handleProjectArtifactsRequest(context, projectId);
   }
 
   if (section === 'runtime') {

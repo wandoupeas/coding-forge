@@ -1,4 +1,5 @@
 import { Badge, Box, Group, Stack, Text, Title } from '@mantine/core';
+import { Link } from 'react-router-dom';
 import ProjectStatusSummary from './ProjectStatusSummary';
 import type { ApiProjectOverview, ApiProjectRecord } from '../../lib/api';
 
@@ -94,6 +95,24 @@ export default function ProjectCard({ project, overview, error }: ProjectCardPro
                 latest event: {overview.runtime.latestRuntimeEvent ?? 'none'}
               </Text>
             </Box>
+
+            <Text
+              component={Link}
+              to={`/projects/${project.id}`}
+              className="forge-mono"
+              size="xs"
+              tt="uppercase"
+              fw={700}
+              style={{
+                alignSelf: 'flex-start',
+                padding: '0.55rem 0.85rem',
+                borderRadius: 999,
+                border: '1px solid rgba(22,32,40,0.12)',
+                background: 'rgba(255,255,255,0.66)'
+              }}
+            >
+              Open project board
+            </Text>
           </>
         ) : (
           <Box
