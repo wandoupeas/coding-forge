@@ -18,7 +18,7 @@ export function createUiCommand(): Command {
     .description('启动 WebForge 多项目只读 Web UI')
     .option('--root <path>', '要扫描的项目根目录', process.cwd())
     .option('--host <host>', '服务监听地址', '127.0.0.1')
-    .option('--port <port>', '服务端口', '4173')
+    .option('--port <port>', '服务端口', '4317')
     .action(async (options: UiCommandOptions) => {
       await startUiServer(options);
     });
@@ -29,7 +29,7 @@ export async function startUiServer(
 ): Promise<StartedUiHttpServerHandle> {
   const root = options.root ?? process.cwd();
   const host = options.host ?? '127.0.0.1';
-  const port = options.port ?? '4173';
+  const port = options.port ?? '4317';
   const numericPort = Number.parseInt(port, 10);
 
   if (Number.isNaN(numericPort) || numericPort < 0 || numericPort > 65535) {

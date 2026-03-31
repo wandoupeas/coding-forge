@@ -107,6 +107,14 @@ webforge ui --root ~/projects
 
 它会扫描这个根目录下所有包含 `.webforge/config.yaml` 或 `.webforge/runtime.json` 的项目，并提供只读的总览、详情、文档预览和 runtime 观察页。
 
+当前这套 UI 已经不是“卡片墙 dashboard”，而是 Mantine 原生优先的研究终端式监控台：
+
+- 首页是 `Project Index + Workspace Ledger + Signal Rail`
+- 单项目页是统一的 `Summary / Evidence / Runtime` 骨架
+- 右侧 recovery rail 会固定显示 doctor、next action、workflow、thread、drift
+- `Evidence` 是资源浏览器
+- `Runtime` 是事件流 + 双快照对照
+
 ## 3. 新项目起盘
 
 新项目从 0 开始时，推荐顺序如下。
@@ -259,6 +267,77 @@ webforge resume --json
 webforge logs runtime --json
 ```
 
+## 5. Web UI 怎么看
+
+如果你打开的是：
+
+```bash
+webforge ui --root ~/projects
+```
+
+推荐按这个顺序看。
+
+### 首页
+
+首页有三个固定区：
+
+- `Project Index`
+  左侧项目索引，只负责切换项目和看简短健康状态
+- `Workspace Ledger`
+  中间主表，是多项目主观察面
+- `Signal Rail`
+  右侧只保留异常和恢复信号，不再堆统计卡
+
+你在首页最该看的是：
+
+1. 哪些项目 `blocked`
+2. 哪些项目有 `pending review`
+3. 哪些项目 `drifted`
+4. 最近哪个项目的 runtime 有新事件
+
+### 单项目页
+
+进入项目后，先看右侧 `recovery rail`，它固定回答这几个问题：
+
+- 现在能不能继续
+- 下一步是什么
+- workflow / thread / worktree 还在不在
+- 当前 drift 和 doctor 状态怎么样
+
+然后再根据需要切换：
+
+- `Summary`
+  看任务压力、artifact pulse 和当前恢复摘要
+- `Evidence`
+  把 knowledge / deliverables / sessions 当浏览器来读
+- `Runtime`
+  看 recent events、snapshots comparison、checkpoint 和 drift reasons
+
+### Evidence 视角
+
+`Evidence` 页不是三列展示卡片，而是一个资源浏览器：
+
+- 左边切类别
+- 中间看条目
+- 右边看 preview
+
+最适合：
+
+- 快速读需求 / spec / deliverable 预览
+- 看 session 最近在做什么
+- 不切终端直接核对 `.webforge/` 里的文本产物
+
+### Runtime 视角
+
+`Runtime` 页的重点不是指标，而是：
+
+- `Recent events`
+- `Snapshots comparison`
+- drift reasons
+- checkpoint queue
+
+当你怀疑当前工作区和历史 runtime 已经漂移时，先看这个页。
+
 其中 `logs runtime --json` 不只是事件日志，还会同时给出“这条日志对应的恢复快照”和“当前工作区恢复快照”。
 
 现在 `doctor --json` 也会补一个 `runtime-context-drift` 检查，直接告诉你最近 runtime 上下文是否已经和当前工作区脱节。
@@ -387,7 +466,7 @@ webforge ui --root ~/projects
 
 - `--root <path>`：扫描根目录
 - `--host <host>`：默认 `127.0.0.1`
-- `--port <port>`：默认 `4173`
+- `--port <port>`：默认 `4317`
 
 进入后可以重点看：
 

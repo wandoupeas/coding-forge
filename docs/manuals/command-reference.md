@@ -84,10 +84,10 @@ webforge onboard --json
 
 当前 UI 会自动扫描根目录里带 `.webforge/config.yaml` 或 `.webforge/runtime.json` 的项目，并提供：
 
-- 首页多项目总览
-- 单项目 `Overview`
-- 单项目 `Artifacts`
-- 单项目 `Runtime`
+- 首页 `Project Index + Workspace Ledger + Signal Rail`
+- 单项目统一 `Summary / Evidence / Runtime` 骨架
+- `Evidence` 资源浏览器
+- `Runtime` 事件流 + 双快照对照
 
 适合这些场景：
 
@@ -95,11 +95,18 @@ webforge onboard --json
 - 你想让人类开发者快速浏览 knowledge、deliverables、sessions
 - 你想通过页面持续观察 runtime pulse，而不是来回切终端
 
+阅读方式建议：
+
+1. 先在首页看 `Signal Rail`
+2. 再用 `Workspace Ledger` 锁定具体项目
+3. 进入详情页后先看右侧 `recovery rail`
+4. 最后按 `Summary / Evidence / Runtime` 切换视角
+
 常用示例：
 
 ```bash
 webforge ui --root ~/projects
-webforge ui --root ~/projects --port 4173
+webforge ui --root ~/projects --port 4317
 webforge ui --root ~/projects --host 0.0.0.0 --port 4317
 ```
 

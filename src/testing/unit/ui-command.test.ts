@@ -66,4 +66,22 @@ describe('ui command', () => {
     await handle.close();
     consoleSpy.mockRestore();
   });
+
+  it('uses 4317 as the default ui port', async () => {
+    const handle = await startUiServer({
+      root: '/tmp/projects',
+      host: '127.0.0.1',
+      staticRoot: '/tmp/static'
+    });
+
+    expect(startUiHttpServerMock).toHaveBeenCalledWith({
+      rootPath: '/tmp/projects',
+      host: '127.0.0.1',
+      port: 4317,
+      staticRoot: '/tmp/static'
+    });
+    expect(handle.port).toBe(4317);
+
+    await handle.close();
+  });
 });

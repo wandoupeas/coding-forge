@@ -68,7 +68,7 @@ export async function startUiHttpServer(
   options: StartUiHttpServerOptions = {}
 ): Promise<StartedUiHttpServerHandle> {
   const host = options.host ?? '127.0.0.1';
-  const port = options.port ?? 4173;
+  const port = options.port ?? 4317;
   const handle = await createUiHttpServer(options);
 
   await new Promise<void>((resolvePromise, rejectPromise) => {

@@ -105,12 +105,12 @@ node dist/cli/index.js ui --root ~/projects
 webforge ui --root ~/projects
 ```
 
-这个 UI 当前是只读监控台，会自动扫描根目录下带 `.webforge/` 的项目，并提供：
+这个 UI 当前是只读监控台，会自动扫描根目录下带 `.webforge/` 的项目，并提供一套更接近“研究终端”的观察面：
 
-- 多项目总览
-- 单项目 dashboard
-- 文档 / 交付物 / session 浏览
-- runtime / drift / checkpoint / mailbox / superpowers 观察
+- 首页 `Project Index + Workspace Ledger + Signal Rail`
+- 单项目统一 `Summary / Evidence / Runtime` 骨架
+- knowledge / deliverables / sessions 的资源浏览器
+- runtime 事件流、双快照对照、checkpoint / drift / mailbox / superpowers 观察
 
 ## 怎么使用
 
@@ -172,10 +172,10 @@ webforge ui --root ~/projects
 
 推荐用法：
 
-1. 在首页看项目健康、blocked、pending review、drift
-2. 进入单项目页看 recovery、tasks、deliverables 和 runtime pulse
-3. 切到 `Artifacts` 页直接看 knowledge / deliverable / session 文本预览
-4. 切到 `Runtime` 页看日志快照 vs 当前工作区快照，以及 checkpoint 列表
+1. 在首页用 `Project Index` 快速切项目，用 `Workspace Ledger` 看当前快照，用 `Signal Rail` 盯住 blocked / pending review / drift
+2. 进入单项目后，始终先看右侧 recovery rail，再决定沿 `Summary / Evidence / Runtime` 哪条视角继续
+3. 在 `Evidence` 里把 knowledge / deliverable / session 当资源浏览器来读，而不是翻三列卡片
+4. 在 `Runtime` 里优先看 `Recent events` 和 `Snapshots comparison`，再看 drift reasons 和 checkpoint
 
 ## 仓库结构
 
