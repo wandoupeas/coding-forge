@@ -1,15 +1,19 @@
 import {
   Alert,
+  Badge,
+  Grid,
   Group,
   Loader,
   Paper,
-  SimpleGrid,
   Stack,
   Text,
   Title
 } from '@mantine/core';
 import { startTransition, useEffect, useState, type ReactNode } from 'react';
-import ProjectCard from '../components/projects/ProjectCard';
+import ProjectIndexPanel from '../components/projects/ProjectIndexPanel';
+import { summarizeProjectHealth } from '../components/projects/project-health';
+import SignalRail from '../components/projects/SignalRail';
+import WorkspaceLedgerTable from '../components/projects/WorkspaceLedgerTable';
 import { fetchProjectsDashboard, type ProjectsDashboardSnapshot } from '../lib/api';
 
 interface ProjectsPageState {
@@ -85,26 +89,30 @@ export default function ProjectsPage() {
           />
         </Group>
 
-        <Group align="stretch" grow>
-          <SectionShell title="Project Index">
-            <Loader color="forgeRust" />
-            <Text mt="sm" c="dimmed">
-              Scanning workspaces and assembling the project index...
-            </Text>
-          </SectionShell>
-
-          <SectionShell title="Workspace Ledger">
-            <Text c="dimmed">
-              A compact project table will land here once the snapshot is ready.
-            </Text>
-          </SectionShell>
-
-          <SectionShell title="Signal Rail">
-            <Text c="dimmed">
-              This rail will collect blocked, drifted, and pending-review signals.
-            </Text>
-          </SectionShell>
-        </Group>
+        <Grid gutter="md">
+          <Grid.Col span={{ base: 12, lg: 3 }}>
+            <SectionShell title="Project Index">
+              <Loader color="forgeRust" />
+              <Text mt="sm" c="dimmed">
+                Scanning workspaces and assembling the project index...
+              </Text>
+            </SectionShell>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 6 }}>
+            <SectionShell title="Workspace Ledger">
+              <Text c="dimmed">
+                A compact project table will land here once the snapshot is ready.
+              </Text>
+            </SectionShell>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 3 }}>
+            <SectionShell title="Signal Rail">
+              <Text c="dimmed">
+                This rail will collect blocked, drifted, and pending-review signals.
+              </Text>
+            </SectionShell>
+          </Grid.Col>
+        </Grid>
       </Stack>
     );
   }
@@ -117,7 +125,7 @@ export default function ProjectsPage() {
     );
   }
 
-  const health = summarizeHealth(state.snapshot);
+  const health = summarizeProjectHealth(state.snapshot.projects);
 
   return (
     <Stack gap="xl">
@@ -141,7 +149,9 @@ export default function ProjectsPage() {
         <TopMetric
           label="Signals"
           value={String(health.pendingReview)}
-          caption="Projects with pending review artifacts"
+          caption={`${health.pendingReview} project${
+            health.pendingReview === 1 ? '' : 's'
+          } with pending review artifacts`}
         />
       </Group>
 
@@ -152,40 +162,24 @@ export default function ProjectsPage() {
         <Title order={2} style={{ fontSize: 'clamp(1.6rem, 2vw, 2.5rem)' }}>
           One board for drift, blockage, recovery, and runtime pulse.
         </Title>
+        <Text c="dimmed" style={{ maxWidth: 840 }}>
+          The homepage now acts as a compact control surface: the project index is the entry rail,
+          the workspace ledger shows the current snapshot, and the signal rail compresses anything
+          that needs attention.
+        </Text>
       </Stack>
 
-      <Group align="stretch" grow>
-        <SectionShell title="Project Index">
-          {state.snapshot.projects.length === 0 ? (
-            <Text c="dimmed">
-              No WebForge projects found.
-            </Text>
-          ) : (
-            <SimpleGrid cols={1} spacing="sm">
-              {state.snapshot.projects.map((entry) => (
-                <ProjectCard
-                  key={entry.project.id}
-                  project={entry.project}
-                  overview={entry.overview}
-                  error={entry.error}
-                />
-              ))}
-            </SimpleGrid>
-          )}
-        </SectionShell>
-
-        <SectionShell title="Workspace Ledger">
-          <Text c="dimmed">
-            A table-oriented ledger will replace this placeholder in the next task.
-          </Text>
-        </SectionShell>
-
-        <SectionShell title="Signal Rail">
-          <Text c="dimmed">
-            This rail will consolidate drift, review, and recovery signals.
-          </Text>
-        </SectionShell>
-      </Group>
+      <Grid gutter="md" align="stretch">
+        <Grid.Col span={{ base: 12, lg: 3 }}>
+          <ProjectIndexPanel projects={state.snapshot.projects} />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}>
+          <WorkspaceLedgerTable projects={state.snapshot.projects} />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 3 }}>
+          <SignalRail projects={state.snapshot.projects} />
+        </Grid.Col>
+      </Grid>
     </Stack>
   );
 }
@@ -220,44 +214,15 @@ function SectionShell({ title, children }: { title: string; children: ReactNode 
   return (
     <Paper withBorder radius="md" p="md">
       <Stack gap="sm">
-        <Text fw={700}>{title}</Text>
+        <Group justify="space-between" align="center">
+          <Text fw={700}>{title}</Text>
+          <Badge variant="light" color="forgeRust">
+            loading
+          </Badge>
+        </Group>
         {children}
       </Stack>
     </Paper>
-  );
-}
-
-function summarizeHealth(snapshot: ProjectsDashboardSnapshot) {
-  return snapshot.projects.reduce(
-    (summary, entry) => {
-      if (!entry.overview || entry.error) {
-        summary.blocked += 1;
-        return summary;
-      }
-
-      if (!entry.overview.recovery.canProceed || entry.overview.tasks.blocked > 0) {
-        summary.blocked += 1;
-      } else if (
-        entry.overview.tasks.pendingReview > 0 ||
-        entry.overview.recovery.contextDriftStatus === 'drifted'
-      ) {
-        summary.watch += 1;
-      } else {
-        summary.healthy += 1;
-      }
-
-      if (entry.overview.tasks.pendingReview > 0) {
-        summary.pendingReview += 1;
-      }
-
-      return summary;
-    },
-    {
-      healthy: 0,
-      watch: 0,
-      blocked: 0,
-      pendingReview: 0
-    }
   );
 }
 
