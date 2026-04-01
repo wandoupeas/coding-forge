@@ -37,11 +37,24 @@ function normalizeWorkspaceIndex<T>(
   label: string,
   wrapperKey?: string
 ): T[] {
+  // 如果指定了 wrapperKey 且存在，返回该 key 的值
   if (wrapperKey && isRecord(value) && Array.isArray(value[wrapperKey])) {
     return value[wrapperKey] as T[];
   }
-  assertArrayShape(value, label);
-  return value as T[];
+  // 支持多种常见的 wrapper key（用于向后兼容）
+  const commonWrapperKeys = ['documents', 'items', 'sessions', 'runs', 'threads', 'entries'];
+  if (isRecord(value)) {
+    for (const key of commonWrapperKeys) {
+      if (Array.isArray(value[key])) {
+        return value[key] as T[];
+      }
+    }
+  }
+  // 直接是数组格式
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+  throw new Error(`${label} must be an array or an object with a known wrapper key`);
 }
 
 function buildWorkspacePaths(basePath: string): WorkspacePaths {
@@ -245,6 +258,7 @@ async function writeWorkspaceSkeleton(
 ): Promise<void> {
   const config = createDefaultConfig(options.projectName);
   const runtime = createWorkspaceRuntime(new Date().toISOString());
+  const now = new Date().toISOString();
 
   await saveConfig(config, paths.root);
   await writeJson(paths.tasks, { tasks: [] });
@@ -253,8 +267,30 @@ async function writeWorkspaceSkeleton(
   await writeJson(paths.superpowers, buildSuperpowersRegistry());
   await writeJson(paths.superpowersRuns, { runs: [] });
   await writeJson(paths.knowledgeIndex, []);
-  await writeJson(paths.deliverablesIndex, []);
-  await writeJson(paths.sessionsIndex, []);
+  await writeJson(paths.deliverablesIndex, { items: [] });
+  
+  // 创建初始会话记录
+  const initialSession = {
+    sessions: [{
+      id: `session-${options.projectName}-001`,
+      name: '初始会话',
+      createdAt: now,
+      created_at: now,
+      lastActive: now,
+      last_active: now,
+      status: 'active',
+      contextSummary: 'Workspace 初始化完成',
+      context_summary: 'Workspace 初始化完成',
+      nextAction: '开始第一个任务',
+      next_action: '开始第一个任务',
+      stats: {
+        tasksCompleted: 0,
+        totalTasks: 0
+      }
+    }]
+  };
+  await writeJson(paths.sessionsIndex, initialSession);
+  
   await writeJson(paths.threadsIndex, { threads: [] });
 }
 

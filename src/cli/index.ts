@@ -27,6 +27,7 @@ import { createUiCommand } from './commands/ui.js';
 import logger from './utils/logger.js';
 import { createVerifyCommand } from './commands/verify.js';
 import { createRecordCommand } from './commands/record.js';
+import { createStatusCommand } from './commands/status.js';
 
 function getVersion(): string {
   try {
@@ -69,6 +70,7 @@ export function createProgram(): Command {
   program.addCommand(createMailboxCommand());
   program.addCommand(createVerifyCommand());
   program.addCommand(createRecordCommand());
+  program.addCommand(createStatusCommand());
   program.addCommand(createUiCommand());
 
   return program;
