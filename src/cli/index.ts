@@ -7,6 +7,9 @@ import { Command } from 'commander';
 import { realpathSync } from 'fs';
 import { resolve } from 'path';
 import { pathToFileURL } from 'url';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { createInitCommand } from './commands/init.js';
 import { createPlanCommand } from './commands/plan.js';
 import { createRunCommand, createDeliverablesCommand } from './commands/run.js';
@@ -25,13 +28,25 @@ import logger from './utils/logger.js';
 import { createVerifyCommand } from './commands/verify.js';
 import { createRecordCommand } from './commands/record.js';
 
+function getVersion(): string {
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const packagePath = join(__dirname, '..', '..', 'package.json');
+    const pkg = JSON.parse(readFileSync(packagePath, 'utf-8'));
+    return pkg.version;
+  } catch {
+    return '0.0.0';
+  }
+}
+
 export function createProgram(): Command {
   const program = new Command();
 
   program
     .name('webforge')
     .description('WebForge harness compatibility CLI')
-    .version('0.1.0')
+    .version(getVersion())
     .showHelpAfterError()
     .configureOutput({
       writeErr: (str) => logger.error(str.trim()),
