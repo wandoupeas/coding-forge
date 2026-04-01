@@ -43,26 +43,29 @@ WebForge 是一个面向 Coding Agent 的 `agent-first harness` 参考实现。
 
 ## 快速开始
 
-先构建 CLI：
+### 安装方式
+
+**方式一：本地源码部署（开发/调试）**
 
 ```bash
 npm install
 npm run build
+# 使用方式: node dist/cli/index.js <command>
 ```
 
-如果你是 npm 使用者，安装方式会是：
+**方式二：npm 全局安装（推荐）**
 
 ```bash
 npm install -g @wandoupeas/coding-forge
-```
+# 使用方式: webforge <command>
 
-或者直接临时运行：
-
-```bash
+# 或临时运行
 npx @wandoupeas/coding-forge --help
 ```
 
-然后初始化一个新仓库：
+### 初始化仓库
+
+以下命令以**本地源码**方式演示，如果你使用 npm 安装，请将 `node dist/cli/index.js` 替换为 `webforge`：
 
 ```bash
 node dist/cli/index.js init demo-app
@@ -78,14 +81,23 @@ node dist/cli/index.js init demo-app
 初始化完成后，进入新仓库先运行：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js doctor
+
+# 或 npm 安装方式
+webforge doctor
 ```
 
 如果你希望让正在仓库里工作的 agent 直接消费结构化状态，可以使用：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js doctor --json
 node dist/cli/index.js resume --json
+
+# 或 npm 安装方式
+webforge doctor --json
+webforge resume --json
 ```
 
 这两个命令分别回答：
@@ -96,12 +108,10 @@ node dist/cli/index.js resume --json
 如果你想用本地 Web UI 统一查看多个 WebForge 项目，可以直接启动：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js ui --root ~/projects
-```
 
-如果你已经通过 npm 安装，则等价命令是：
-
-```bash
+# 或 npm 安装方式
 webforge ui --root ~/projects
 ```
 
@@ -128,14 +138,12 @@ webforge ui --root ~/projects
 推荐最短使用路径：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js init demo-app
 cd demo-app
 node /path/to/work-forge/dist/cli/index.js onboard --json
-```
 
-如果你已经通过 npm 安装，则等价命令是：
-
-```bash
+# 或 npm 安装方式
 webforge init demo-app
 cd demo-app
 webforge onboard --json
@@ -251,22 +259,37 @@ WebForge 和 `superpowers` 不是互相替代的关系：
 如果你是人类开发者在仓库里工作，推荐顺序是：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js doctor
 node dist/cli/index.js resume
 node dist/cli/index.js dashboard
+
+# 或 npm 安装方式
+webforge doctor
+webforge resume
+webforge dashboard
 ```
 
 如果你是希望让 agent 直接消费仓库状态，推荐顺序是：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js onboard --json
+
+# 或 npm 安装方式
+webforge onboard --json
 ```
 
 或者显式拆开：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js doctor --json
 node dist/cli/index.js resume --json
+
+# 或 npm 安装方式
+webforge doctor --json
+webforge resume --json
 ```
 
 标准含义：
@@ -316,23 +339,43 @@ node dist/cli/index.js resume --json
 npm run test:unit
 npm run build
 npm run smoke:onboarding
+
+# 本地源码方式
 node dist/cli/index.js --help
 node dist/cli/index.js doctor
+
+# 或 npm 安装方式
+webforge --help
+webforge doctor
 ```
 
 常用结构化观察命令：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js onboard --json
 node dist/cli/index.js doctor --json
 node dist/cli/index.js resume --json
 node dist/cli/index.js logs runtime --json
+
+# 或 npm 安装方式
+webforge onboard --json
+webforge doctor --json
+webforge resume --json
+webforge logs runtime --json
 ```
 
 常用 workflow 回写命令：
 
 ```bash
+# 本地源码方式
 node dist/cli/index.js superpowers record writing-plans \
+  --summary "approved spec converted into execution plan" \
+  --artifact plan:docs/superpowers/plans/demo-plan.md \
+  --task T001
+
+# 或 npm 安装方式
+webforge superpowers record writing-plans \
   --summary "approved spec converted into execution plan" \
   --artifact plan:docs/superpowers/plans/demo-plan.md \
   --task T001
