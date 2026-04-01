@@ -65,7 +65,7 @@ npx @wandoupeas/coding-forge --help
 然后初始化一个新仓库：
 
 ```bash
-webforge init demo-app
+node dist/cli/index.js init demo-app
 ```
 
 这一步会同时生成：
@@ -78,14 +78,14 @@ webforge init demo-app
 初始化完成后，进入新仓库先运行：
 
 ```bash
-webforge doctor
+node dist/cli/index.js doctor
 ```
 
 如果你希望让正在仓库里工作的 agent 直接消费结构化状态，可以使用：
 
 ```bash
-webforge doctor --json
-webforge resume --json
+node dist/cli/index.js doctor --json
+node dist/cli/index.js resume --json
 ```
 
 这两个命令分别回答：
@@ -96,7 +96,7 @@ webforge resume --json
 如果你想用本地 Web UI 统一查看多个 WebForge 项目，可以直接启动：
 
 ```bash
-webforge ui --root ~/projects
+node dist/cli/index.js ui --root ~/projects
 ```
 
 如果你已经通过 npm 安装，则等价命令是：
@@ -128,7 +128,7 @@ webforge ui --root ~/projects
 推荐最短使用路径：
 
 ```bash
-webforge init demo-app
+node dist/cli/index.js init demo-app
 cd demo-app
 node /path/to/work-forge/dist/cli/index.js onboard --json
 ```
@@ -251,22 +251,22 @@ WebForge 和 `superpowers` 不是互相替代的关系：
 如果你是人类开发者在仓库里工作，推荐顺序是：
 
 ```bash
-webforge doctor
-webforge resume
-webforge dashboard
+node dist/cli/index.js doctor
+node dist/cli/index.js resume
+node dist/cli/index.js dashboard
 ```
 
 如果你是希望让 agent 直接消费仓库状态，推荐顺序是：
 
 ```bash
-webforge onboard --json
+node dist/cli/index.js onboard --json
 ```
 
 或者显式拆开：
 
 ```bash
-webforge doctor --json
-webforge resume --json
+node dist/cli/index.js doctor --json
+node dist/cli/index.js resume --json
 ```
 
 标准含义：
@@ -316,23 +316,23 @@ webforge resume --json
 npm run test:unit
 npm run build
 npm run smoke:onboarding
-webforge --help
-webforge doctor
+node dist/cli/index.js --help
+node dist/cli/index.js doctor
 ```
 
 常用结构化观察命令：
 
 ```bash
-webforge onboard --json
-webforge doctor --json
-webforge resume --json
-webforge logs runtime --json
+node dist/cli/index.js onboard --json
+node dist/cli/index.js doctor --json
+node dist/cli/index.js resume --json
+node dist/cli/index.js logs runtime --json
 ```
 
 常用 workflow 回写命令：
 
 ```bash
-webforge superpowers record writing-plans \
+node dist/cli/index.js superpowers record writing-plans \
   --summary "approved spec converted into execution plan" \
   --artifact plan:docs/superpowers/plans/demo-plan.md \
   --task T001
