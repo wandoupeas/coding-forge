@@ -6,9 +6,10 @@
 
 import { Command } from 'commander';
 import { join } from 'path';
+import { existsSync } from 'fs';
 import logger from '../utils/logger.js';
 import { readJson, writeJson } from '../../utils/file.js';
-import type { Task, TaskStatus, TaskExecutionMode, TaskModule, WorkspaceKnowledgeIndexEntry } from '../../types/index.js';
+import type { Task, TaskStatus, TaskExecutionMode, TaskModule, WorkspaceKnowledgeIndexEntry, WorkspaceRuntime } from '../../types/index.js';
 
 interface CreateTaskOptions {
   phase?: string;
@@ -264,6 +265,26 @@ async function updateTask(
   task.updated_at = now;
   tasksData.tasks[taskIndex] = task;
   await writeJson(tasksPath, tasksData);
+
+  // 同步更新 runtime.json
+  const runtimePath = join(basePath, '.webforge', 'runtime.json');
+  if (existsSync(runtimePath)) {
+    const runtime = await readJson<WorkspaceRuntime>(runtimePath);
+    if (runtime) {
+      runtime.updatedAt = now;
+      runtime.taskId = taskId;
+      runtime.phaseId = task.phase ?? runtime.phaseId;
+      
+      // 如果任务状态变化，更新 summary
+      if (options.status) {
+        runtime.summary = `${taskId} → ${options.status}`;
+      } else {
+        runtime.summary = `${taskId} updated`;
+      }
+      
+      await writeJson(runtimePath, runtime);
+    }
+  }
 
   logger.success(`更新任务 ${taskId}`);
   if (knowledgeChanged) {
