@@ -2,7 +2,7 @@
  * doctor 命令 - 校验 repo-side harness 契约是否完整
  */
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
 import { Command } from 'commander';
@@ -118,6 +118,31 @@ export async function buildDoctorReport(
   checks.push(
     createPresenceCheck('agents', 'AGENTS.md', agentsPath, true, '仓库规则入口已存在')
   );
+  
+  // 检查 AGENTS.md 是否包含强制规范
+  if (existsSync(agentsPath)) {
+    const agentsContent = readFileSync(agentsPath, 'utf-8');
+    const hasMandatorySection = agentsContent.includes('强制规范') || agentsContent.includes('MANDATORY');
+    const hasCLiRequirement = agentsContent.includes('webforge task') && agentsContent.includes('禁止');
+    const hasCommitFormat = agentsContent.includes('<task-id>:');
+    
+    if (hasMandatorySection && hasCLiRequirement && hasCommitFormat) {
+      checks.push({
+        id: 'agents-mandatory-protocol',
+        label: 'AGENTS.md 强制规范',
+        status: 'ok',
+        detail: '已包含强制 CLI 操作规范和提交格式要求'
+      });
+    } else {
+      checks.push({
+        id: 'agents-mandatory-protocol',
+        label: 'AGENTS.md 强制规范',
+        status: 'warn',
+        detail: 'AGENTS.md 缺少强制规范部分，建议更新到最新版本'
+      });
+    }
+  }
+  
   checks.push(
     createPresenceCheck(
       'workspace',
@@ -525,6 +550,10 @@ function buildDoctorGuidance(report: DoctorReport): string[] {
 
   if (report.checks.some((check) => check.id === 'agents' && check.status === 'fail')) {
     guidance.push('补齐 AGENTS.md，把仓库规则和读取顺序写成硬约束。');
+  }
+
+  if (report.checks.some((check) => check.id === 'agents-mandatory-protocol' && check.status === 'warn')) {
+    guidance.push('更新 AGENTS.md 添加强制规范部分：所有任务必须通过 webforge CLI 操作，禁止直接修改状态文件。');
   }
 
   if (report.checks.some((check) => check.id === 'superpowers-doc' && check.status !== 'ok')) {
