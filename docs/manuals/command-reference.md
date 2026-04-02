@@ -1,8 +1,8 @@
 # WebForge 命令参考
 
-这份文档按“什么时候用什么命令”来组织，而不是按源码文件组织。
+这份文档按"什么时候用什么命令"来组织，而不是按源码文件组织。
 
-如果你想按“场景”阅读，而不是按命令查找，直接看 [`docs/manuals/scenario-playbooks.md`](./scenario-playbooks.md)。
+如果你想按"场景"阅读，而不是按命令查找，直接看 [`docs/manuals/scenario-playbooks.md`](./scenario-playbooks.md)。
 
 下文默认你已经可以直接使用：
 
@@ -69,7 +69,7 @@ webforge init demo-app --template default
 
 如果当前上下文带 `threadId`，`shouldRead` 还会把 `.webforge/threads.json` 和该 thread 对应的 artifacts 一起带出来。
 
-`recommendedActions` 现在还会结合 `resume.runtimeLog.contextDrift`，直接告诉你是“沿当前上下文继续”，还是“先回看历史 runtime 再决定”。
+`recommendedActions` 现在还会结合 `resume.runtimeLog.contextDrift`，直接告诉你是"沿当前上下文继续"，还是"先回看历史 runtime 再决定"。
 
 常用示例：
 
@@ -141,7 +141,7 @@ webforge doctor --json
 
 ### `webforge verify init [project-path] [--json]`
 
-显式重跑“初始化后自检”。
+显式重跑"初始化后自检"。
 
 它会复用 `init` 结束时那套校验逻辑，确认：
 
@@ -228,7 +228,7 @@ webforge dashboard --watch
 
 查看最近一次或指定 session 的 runtime 观察日志。
 
-- 文本模式会区分“日志恢复快照”和“当前工作区恢复快照”，再显示事件流
+- 文本模式会区分"日志恢复快照"和"当前工作区恢复快照"，再显示事件流
 - `--json` 模式会保留日志对应的 `workflowContext / threadLinkage`，并额外带上 `currentWorkflowContext / currentThreadLinkage`
 
 常用示例：
@@ -331,7 +331,127 @@ webforge knowledge list
 webforge knowledge list -c requirements
 ```
 
-## 4. 规划与执行
+### `webforge knowledge link <knowledge-id> <task-id>`
+
+将知识文档与任务关联。
+
+允许 agent 根据任务内容主动选择关联的知识文档，而不是让 plan 命令自动推断。
+
+常用示例：
+
+```bash
+webforge knowledge link ADR-005 T010
+webforge knowledge link frontend-guidelines T011
+```
+
+### `webforge knowledge infer <task-id>`
+
+根据任务标题和模块自动推断并推荐关联的知识文档。
+
+这是 plan 命令使用的自动推断逻辑的独立入口，供 agent 在需要时调用。
+
+常用示例：
+
+```bash
+webforge knowledge infer T010
+```
+
+## 4. 任务管理
+
+### `webforge task create <task-id>`
+
+创建新任务。
+
+常用选项：
+
+- `-t, --title <title>` - 任务标题（必填）
+- `-p, --phase <phase>` - 所属阶段，默认 P1
+- `-d, --description <text>` - 任务描述
+- `--priority <n>` - 优先级 1-5，默认 2
+- `--depends-on <ids...>` - 依赖的任务 ID
+- `--assignee <role>` - 负责人角色，默认 agent
+- `--execution-mode <mode>` - 执行模式: `auto|manual`，默认 `auto`
+- `-k, --knowledge <paths...>` - 关联的知识文档路径（支持简写如 ADR-005）
+- `-m, --modules <modules...>` - 任务涉及的模块: frontend|backend|database|auth|testing|architecture|devops|pm
+- `--no-auto-knowledge` - 禁用自动推断知识文档
+
+**执行模式说明：**
+
+- `auto` - 由 `webforge run` 通过 worker adapter 自动执行
+- `manual` - 由 agent 直接执行，然后使用 `webforge record notify` 更新状态
+
+常用示例：
+
+```bash
+# 创建自动执行的任务
+webforge task create T010 \
+  --title "实现用户登录接口" \
+  --phase P2 \
+  --depends-on T001 T002 \
+  --execution-mode auto
+
+# 创建手动执行的任务，指定知识文档和模块
+webforge task create T011 \
+  --title "前端性能优化" \
+  --phase P2 \
+  --knowledge ADR-005 frontend-guidelines \
+  --modules frontend \
+  --execution-mode manual
+```
+
+### `webforge task update <task-id>`
+
+更新任务。
+
+常用选项：
+
+- `-t, --title <title>` - 任务标题
+- `-d, --description <text>` - 任务描述
+- `-s, --status <status>` - 任务状态: pending/ready/in_progress/blocked/completed/failed
+- `--priority <n>` - 优先级 1-5
+- `--add-knowledge <paths...>` - 添加关联的知识文档
+- `--remove-knowledge <paths...>` - 移除关联的知识文档
+- `-m, --modules <modules...>` - 任务涉及的模块
+- `--no-auto-knowledge` - 禁用自动根据任务标题补全知识文档
+
+常用示例：
+
+```bash
+# 更新任务状态
+webforge task update T010 --status in_progress
+
+# 添加知识文档关联
+webforge task update T011 --add-knowledge security-guidelines
+```
+
+### `webforge task list`
+
+列出任务。
+
+常用选项：
+
+- `-p, --phase <phase>` - 按阶段过滤
+- `-s, --status <status>` - 按状态过滤
+
+常用示例：
+
+```bash
+webforge task list
+webforge task list --phase P2
+webforge task list --status ready
+```
+
+### `webforge task show <task-id>`
+
+查看任务详情。
+
+常用示例：
+
+```bash
+webforge task show T010
+```
+
+## 5. 规划与执行
 
 ### `webforge plan`
 
@@ -366,6 +486,7 @@ webforge plan --no-superpowers
 - 这是 runtime 的兼容入口
 - 当前主逻辑在 `runtime core`
 - `--phase`、`--worker`、`--execution`、`--no-superpowers` 主要是兼容保留项
+- 遇到 `executionMode=manual` 的任务会暂停并退出，等待 agent 手动完成
 
 常用选项：
 
@@ -380,6 +501,33 @@ webforge run --dry-run
 webforge run
 webforge run --limit 2
 webforge run --session manual-run-001
+```
+
+### `webforge record notify`
+
+快速通知任务进度，无需运行完整的 runtime 循环。
+
+适合 agent 直接工作在仓库中时，手动完成任务后立即更新状态。
+
+常用选项：
+
+- `--task <task-id>` - 指定任务 ID
+- `--status <status>` - 设置任务状态: ready/in_progress/completed/failed
+- `--auto` - 自动推断当前任务（基于 runtime 状态）
+- `--propagate` - 传播依赖：当任务完成时，自动将依赖它的任务设为 ready
+- `-m, --message <text>` - 进度消息
+
+常用示例：
+
+```bash
+# 快速更新任务状态
+webforge record notify --task T001 --status completed
+
+# 自动推断当前任务并标记完成
+webforge record notify --auto --status completed --message "完成了用户认证模块"
+
+# 完成任务并传播依赖
+webforge record notify --task T004 --status completed --propagate
 ```
 
 ### `webforge deliverables [task-id]`
@@ -406,7 +554,7 @@ webforge deliverables T001
 
 注意：
 
-- 当前实现里，如果不传 `--reject`，默认会按“通过审核”处理
+- 当前实现里，如果不传 `--reject`，默认会按"通过审核"处理
 - 实际使用时建议显式写 `--approve` 或 `--reject`
 - 按 task 审核时，默认只处理 `pending_review`
 - 加 `--all` 才会包含该 task 下的其他交付物
@@ -419,7 +567,7 @@ webforge review del-001 --reject -m "needs changes"
 webforge review T001 --approve --all
 ```
 
-## 5. 协作与通信
+## 6. 协作与通信
 
 ### `webforge mailbox list`
 
@@ -453,7 +601,7 @@ webforge mailbox read backend --mark-read
 webforge mailbox clear reviewer
 ```
 
-## 6. 检查点与恢复
+## 7. 检查点与恢复
 
 ### `webforge checkpoint list`
 
@@ -475,7 +623,7 @@ webforge checkpoint rollback cp-001
 webforge checkpoint rollback cp-001 --restore-deliverables
 ```
 
-## 7. 最常用的三条路径
+## 8. 最常用的三条路径
 
 ### 新项目起盘
 
@@ -495,6 +643,24 @@ webforge run
 webforge onboard --json
 webforge logs runtime
 webforge dashboard
+```
+
+### Agent 直接工作模式（手动任务）
+
+```bash
+# 1. 查看当前任务
+webforge task list --status ready
+
+# 2. 创建手动执行任务（executionMode=manual）
+webforge task create T010 \
+  --title "优化前端性能" \
+  --execution-mode manual \
+  --modules frontend
+
+# 3. Agent 直接工作在仓库中完成任务...
+
+# 4. 完成后通知进度
+webforge record notify --task T010 --status completed --propagate
 ```
 
 ### 交付物审核与恢复

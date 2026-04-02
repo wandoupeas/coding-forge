@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import logger from '../utils/logger.js';
+import { LogManager } from '../../core/logger.js';
 import { readJson, writeJson } from '../../utils/file.js';
 import type { Task, TaskStatus, TaskExecutionMode, TaskModule, WorkspaceKnowledgeIndexEntry, WorkspaceRuntime } from '../../types/index.js';
 
@@ -176,6 +177,19 @@ async function createTask(
   tasksData.tasks.push(newTask);
   await writeJson(tasksPath, tasksData);
 
+  // 写入日志
+  const sessionId = `session-${Date.now()}`;
+  const logManager = new LogManager('task', basePath, sessionId);
+  await logManager.addEntry('info', 'task_created', {
+    taskId,
+    metadata: {
+      title: newTask.title,
+      phase: newTask.phase,
+      recordedBy: 'webforge task create',
+      sessionId
+    }
+  });
+
   logger.success(`创建任务 ${taskId}: ${newTask.title}`);
   if (knowledgeRefs && knowledgeRefs.length > 0) {
     logger.info(`关联知识文档 (${knowledgeRefs.length}个):`);
@@ -268,6 +282,7 @@ async function updateTask(
 
   // 同步更新 runtime.json
   const runtimePath = join(basePath, '.webforge', 'runtime.json');
+  let sessionId = `session-${Date.now()}`;
   if (existsSync(runtimePath)) {
     const runtime = await readJson<WorkspaceRuntime>(runtimePath);
     if (runtime) {
@@ -282,9 +297,26 @@ async function updateTask(
         runtime.summary = `${taskId} updated`;
       }
       
+      // 获取 sessionId 用于日志
+      if (runtime.sessionId) {
+        sessionId = runtime.sessionId;
+      }
+      
       await writeJson(runtimePath, runtime);
     }
   }
+
+  // 写入日志
+  const logManager = new LogManager('task', basePath, sessionId);
+  await logManager.addEntry('info', 'task_updated', {
+    taskId,
+    metadata: {
+      status: options.status,
+      title: options.title,
+      recordedBy: 'webforge task update',
+      sessionId
+    }
+  });
 
   logger.success(`更新任务 ${taskId}`);
   if (knowledgeChanged) {

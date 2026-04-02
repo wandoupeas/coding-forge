@@ -239,7 +239,7 @@ WebForge 和 `superpowers` 不是互相替代的关系：
   只保留标准执行门面与 handler
 - `src/cli/`
   只保留兼容层和观察入口
-  包括 `init / plan / run / onboard / resume / dashboard / doctor / superpowers / knowledge / logs / deliverables / review / checkpoint / mailbox`
+  包括 `init / plan / run / task / record / onboard / resume / dashboard / doctor / superpowers / knowledge / logs / deliverables / review / checkpoint / mailbox`
 
 ## 适配对象
 
