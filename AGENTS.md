@@ -3,6 +3,78 @@
 WebForge 是一个 `agent-first harness`。  
 这个仓库里的真相不在聊天记录里，也不在某个 CLI 命令里，而在 `.webforge/` 这组持久化状态文件里。
 
+---
+
+## ⚠️ 强制规范（MANDATORY）
+
+### 所有工作必须通过 WebForge CLI
+
+**严禁绕过 webforge 直接操作以下事项：**
+
+1. ✅ **Plan 创建** - 必须使用 `webforge plan` 生成规划
+2. ✅ **任务管理** - 必须使用 `webforge task` 创建/更新任务状态
+3. ✅ **阶段管理** - 必须使用 `webforge` 命令更新 phases 状态
+4. ✅ **Runtime 更新** - 不得直接修改 `.webforge/runtime.json`
+5. ✅ **Bug 修复** - 必须为每个 bug 创建任务，通过 webforge 跟踪
+6. ✅ **新功能开发** - 必须先创建任务，再开始编码
+7. ✅ **文档添加** - 知识文档需通过 `webforge knowledge` 管理
+8. ✅ **初始化项目** - 必须使用 `webforge init`，不得手动创建目录结构
+9. ✅ **框架/组件引用** - 涉及架构变更必须通过 webforge 任务跟踪
+
+### 链式更新要求
+
+每完成一个任务，必须按顺序执行：
+
+```bash
+# 1. 更新任务状态
+webforge task update <task-id> --status completed
+
+# 2. 检查 runtime 状态
+webforge resume --json
+
+# 3. 提交代码（详细提交信息）
+git add .
+git commit -m "<task-id>: <task-title>
+
+- <change-1>
+- <change-2>
+- <change-3>"
+```
+
+### 禁止直接操作的文件
+
+| 文件/目录 | 正确操作方式 |
+|----------|-------------|
+| `.webforge/runtime.json` | `webforge run`, `webforge task update` |
+| `.webforge/tasks.json` | `webforge task` 命令 |
+| `.webforge/phases.json` | `webforge plan`, `webforge task` |
+| `.webforge/sessions/` | `webforge session` 命令 |
+| `.webforge/knowledge/` | `webforge knowledge` 命令 |
+| `.webforge/deliverables/` | `webforge deliverables` 命令 |
+
+### 代码提交规范
+
+每个任务完成后必须提交，提交信息格式：
+
+```
+<task-id>: <task-title>
+
+- <具体变更1>
+- <具体变更2>
+- <具体变更3>
+```
+
+**示例：**
+```
+T015: 修复前端TypeScript错误
+
+- 修复 React 19 useRef 需要初始值的问题
+- 替换 useRequest 为 useEffect + useState
+- 修复 ProTable render 函数参数类型
+```
+
+---
+
 ## 进入仓库后的读取顺序
 
 1. 读取 `.webforge/runtime.json`
@@ -148,3 +220,12 @@ WebForge 是一个 `agent-first harness`。
 - `ARCHITECTURE.md`
 - `docs/agent-guide.md`
 - `docs/methodology/`
+
+---
+
+## 规范版本
+
+- **版本**: v2.1
+- **更新日期**: 2026-04-02
+- **生效范围**: 所有 WebForge 仓库及 Agent 操作
+- **主要变更**: 添加强制 CLI 操作规范、链式更新流程、代码提交规范
