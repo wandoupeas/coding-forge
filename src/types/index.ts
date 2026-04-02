@@ -12,6 +12,10 @@ export type TaskStatus =
   | 'completed'    // 完成
   | 'failed';      // 失败
 
+export type TaskExecutionMode =
+  | 'auto'         // 由 runtime 主循环执行 (webforge run)
+  | 'manual';      // 由 Agent 直接执行后手动通知 (webforge record notify)
+
 export interface Task {
   id: string;                    // T101
   phase: string;                 // P2 (后端开发)
@@ -25,6 +29,7 @@ export interface Task {
   created_at: string;            // ISO 8601
   updated_at: string;            // ISO 8601
   completed_at?: string;         // ISO 8601
+  executionMode?: TaskExecutionMode;  // 执行模式，默认 'auto'
   workflowContext?: WorkspaceWorkflowContext;
   metadata?: Record<string, any>;
 }

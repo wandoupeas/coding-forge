@@ -65,6 +65,27 @@ export async function runReadyTasks(
       break;
     }
 
+    // 检查任务执行模式
+    if (nextTask.executionMode === 'manual') {
+      // manual 任务需要 Agent 直接执行，runtime 暂停并提示
+      await updateRuntime(basePath, {
+        status: 'idle',
+        sessionId,
+        phaseId: nextTask.phase,
+        taskId: nextTask.id,
+        summary: `任务 ${nextTask.id} 需要 Agent 手动执行 (executionMode=manual)`
+      });
+      await logManager.addEntry('info', 'manual_task_pause', {
+        taskId: nextTask.id,
+        metadata: {
+          reason: 'executionMode is manual',
+          hint: 'Agent should execute this task directly and use webforge record notify'
+        }
+      });
+      // 遇到 manual 任务，停止执行循环
+      break;
+    }
+
     const workerId = nextTask.assignee || inferWorkerForTask(nextTask);
     const worker = new Worker(workerId, taskManager, basePath);
     await worker.init();

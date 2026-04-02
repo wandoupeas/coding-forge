@@ -105,9 +105,20 @@ async function renderDryRun(basePath: string, limit?: number): Promise<void> {
 
   if (readyTasks.length > 0) {
     console.log();
-    logger.h2('即将执行的任务');
+    logger.h2('就绪任务队列');
     for (const task of readyTasks.slice(0, 5)) {
-      console.log(`  ${task.id}: ${task.title} (${task.assignee}) [${task.phase}]`);
+      const mode = task.executionMode ?? 'auto';
+      const modeLabel = mode === 'manual' ? '[manual]' : '[auto]';
+      console.log(`  ${task.id}: ${task.title} (${task.assignee}) [${task.phase}] ${modeLabel}`);
+    }
+    
+    // 检查第一个任务是否为 manual
+    const firstTask = readyTasks[0];
+    if (firstTask.executionMode === 'manual') {
+      console.log();
+      logger.warning(`首个任务 ${firstTask.id} 为 manual 模式`);
+      logger.info('runtime 将在该任务前暂停，等待 Agent 直接执行');
+      logger.info('Agent 完成后请运行: webforge record notify --task <id> --status completed');
     }
   } else {
     logger.info('当前没有 ready task。');

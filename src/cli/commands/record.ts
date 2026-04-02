@@ -598,6 +598,13 @@ async function notifyProgress(
   metadata.progress_notified_at = now;
   metadata.progress_message = options.message ?? `${taskId} ${newStatus}`;
   metadata.progress_by = 'agent_notify';
+  
+  // 记录执行模式信息
+  const execMode = (task.executionMode ?? 'auto') as string;
+  if (execMode === 'manual') {
+    metadata.manual_execution = true;
+  }
+  
   task.metadata = metadata;
 
   await writeJson(tasksPath, tasksData);
@@ -639,6 +646,9 @@ async function notifyProgress(
   }
 
   logger.success(`✓ ${taskId}: ${oldStatus} → ${newStatus}`);
+  if (execMode === 'manual') {
+    logger.info(`  模式: manual (Agent 直接执行)`);
+  }
   if (options.message) {
     logger.info(`  消息: ${options.message}`);
   }
