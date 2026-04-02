@@ -29,6 +29,15 @@ interface RecordSessionOptions {
   task?: string;
 }
 
+interface NotifyOptions {
+  task?: string;
+  status?: string;
+  message?: string;
+  deliverable?: string[];
+  auto?: boolean;
+  propagate?: boolean;
+}
+
 export function createRecordCommand(): Command {
   const command = new Command('record')
     .description('旁路回写：把直接完成的工作记录到 .webforge/');
@@ -106,6 +115,25 @@ export function createRecordCommand(): Command {
         if (!options.json) {
           logger.error(`快照失败: ${error}`);
         }
+        process.exit(1);
+      }
+    });
+
+  // 新增 notify 子命令 - 快速通知任务进度
+  command
+    .command('notify')
+    .description('快速通知任务进度（适合 Agent 在完成子任务后立即调用）')
+    .option('-t, --task <id>', '任务 ID（如 T002）')
+    .option('-s, --status <status>', '任务状态: completed/in_progress/blocked/ready', 'completed')
+    .option('-m, --message <text>', '进度消息/摘要')
+    .option('-d, --deliverable <paths...>', '关联的交付物文件路径')
+    .option('--auto', '自动推断任务 ID（从最近的提交或当前目录）')
+    .option('--propagate', '自动传播到依赖任务（completed 时把就绪的依赖设为 ready）')
+    .action(async (options: NotifyOptions) => {
+      try {
+        await notifyProgress(options);
+      } catch (error) {
+        logger.error(`通知失败: ${error}`);
         process.exit(1);
       }
     });
@@ -521,5 +549,190 @@ function buildAutoSummary(
     parts.push(`${configFiles.length} 个配置`);
   }
   return parts.length > 0 ? parts.join(', ') : '工作进行中';
+}
+
+/**
+ * 快速通知任务进度 - 适合 Agent 在完成子任务后立即调用
+ */
+async function notifyProgress(
+  options: NotifyOptions,
+  basePath: string = process.cwd()
+): Promise<void> {
+  const tasksPath = join(basePath, '.webforge', 'tasks.json');
+  const runtimePath = join(basePath, '.webforge', 'runtime.json');
+
+  if (!existsSync(tasksPath)) {
+    throw new Error('.webforge/tasks.json 不存在，请先运行 webforge init');
+  }
+
+  // 确定任务 ID
+  let taskId = options.task;
+  if (!taskId && options.auto) {
+    taskId = (await inferTaskIdFromContext(basePath)) ?? undefined;
+  }
+
+  if (!taskId) {
+    throw new Error('请指定任务 ID: --task T002 或 --auto 自动推断');
+  }
+
+  const tasksData = await readJson<{ tasks: Array<Record<string, unknown>> }>(tasksPath);
+  const task = tasksData.tasks.find((t) => t.id === taskId);
+  if (!task) {
+    throw new Error(`任务 ${taskId} 不存在`);
+  }
+
+  const newStatus = options.status ?? 'completed';
+  const now = new Date().toISOString();
+  const oldStatus = task.status;
+
+  // 更新任务状态
+  task.status = newStatus;
+  task.updated_at = now;
+
+  if (newStatus === 'completed' || newStatus === 'failed') {
+    (task as Record<string, unknown>).completed_at = now;
+  }
+
+  // 添加进度元数据
+  const metadata = (task.metadata as Record<string, unknown>) ?? {};
+  metadata.progress_notified_at = now;
+  metadata.progress_message = options.message ?? `${taskId} ${newStatus}`;
+  metadata.progress_by = 'agent_notify';
+  task.metadata = metadata;
+
+  await writeJson(tasksPath, tasksData);
+
+  // 传播到依赖任务
+  let propagatedCount = 0;
+  if (options.propagate && newStatus === 'completed') {
+    propagatedCount = await propagateToDependentTasks(tasksPath, tasksData, taskId, now);
+  }
+
+  // 写 runtime log
+  const sessionId = await getOrCreateSessionId(basePath);
+  const logManager = new LogManager('runtime', basePath, sessionId);
+  await logManager.addEntry('info', `task_${newStatus}`, {
+    taskId,
+    metadata: {
+      previousStatus: oldStatus,
+      newStatus,
+      message: options.message,
+      recordedBy: 'webforge notify',
+      sessionId,
+      notifyAt: now,
+      propagatedCount
+    }
+  });
+
+  // 更新 runtime
+  const runtime = await readJson<WorkspaceRuntime>(runtimePath);
+  runtime.updatedAt = now;
+  runtime.sessionId = sessionId;
+  runtime.taskId = taskId;
+  runtime.phaseId = (task.phase as string) ?? runtime.phaseId;
+  runtime.summary = options.message ?? `${taskId} → ${newStatus}`;
+  await writeJson(runtimePath, runtime);
+
+  // 记录交付物
+  if (options.deliverable && options.deliverable.length > 0) {
+    await recordDeliverables(basePath, taskId, options.deliverable, now);
+  }
+
+  logger.success(`✓ ${taskId}: ${oldStatus} → ${newStatus}`);
+  if (options.message) {
+    logger.info(`  消息: ${options.message}`);
+  }
+  if (propagatedCount > 0) {
+    logger.info(`  传播: ${propagatedCount} 个依赖任务已就绪`);
+  }
+  logger.info(`  时间: ${new Date(now).toLocaleTimeString()}`);
+}
+
+/**
+ * 传播任务完成状态到依赖任务
+ * 将依赖于此任务且所有依赖都已完成的其他任务设置为 ready
+ */
+async function propagateToDependentTasks(
+  tasksPath: string,
+  tasksData: { tasks: Array<Record<string, unknown>> },
+  completedTaskId: string,
+  timestamp: string
+): Promise<number> {
+  let count = 0;
+
+  for (const task of tasksData.tasks) {
+    // 只处理 pending 状态的任务
+    if (task.status !== 'pending') continue;
+
+    // 检查是否依赖已完成的任务
+    const deps = (task.depends_on as string[]) ?? [];
+    if (!deps.includes(completedTaskId)) continue;
+
+    // 检查所有依赖是否都已完成
+    const allDepsCompleted = deps.every((depId: string) => {
+      const dep = tasksData.tasks.find((t) => t.id === depId);
+      return dep?.status === 'completed';
+    });
+
+    if (allDepsCompleted) {
+      task.status = 'ready';
+      task.updated_at = timestamp;
+      const metadata = (task.metadata as Record<string, unknown>) ?? {};
+      metadata.ready_by_propagation = completedTaskId;
+      task.metadata = metadata;
+      count++;
+    }
+  }
+
+  if (count > 0) {
+    await writeJson(tasksPath, tasksData);
+  }
+
+  return count;
+}
+
+/**
+ * 从上下文推断任务 ID
+ */
+async function inferTaskIdFromContext(basePath: string): Promise<string | null> {
+  // 1. 尝试从 runtime.json 获取当前任务
+  try {
+    const runtimePath = join(basePath, '.webforge', 'runtime.json');
+    const runtime = await readJson<WorkspaceRuntime>(runtimePath);
+    if (runtime.taskId) {
+      return runtime.taskId;
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. 尝试从 git commit message 解析
+  try {
+    const lastCommitMsg = execSync('git log -1 --pretty=%B', {
+      cwd: basePath,
+      encoding: 'utf-8',
+      timeout: 5000
+    });
+    const match = lastCommitMsg.match(/\b(T\d{3})\b/);
+    if (match) {
+      return match[1];
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3. 返回第一个 in_progress 的任务
+  try {
+    const tasksPath = join(basePath, '.webforge', 'tasks.json');
+    const tasksData = await readJson<{ tasks: Array<Record<string, unknown>> }>(tasksPath);
+    const inProgressTask = tasksData.tasks.find((t) => t.status === 'in_progress');
+    if (inProgressTask) {
+      return inProgressTask.id as string;
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
 }
 
