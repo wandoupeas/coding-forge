@@ -404,7 +404,7 @@ function normalizeSessionIndexEntry(entry: Session | SessionIndexEntry): Session
     contextSummary: legacy.contextSummary || legacy.context_summary,
     nextAction: legacy.nextAction || legacy.next_action,
     workflowContext: normalizeWorkflowContext(legacy.workflowContext) ?? undefined,
-    stats: legacy.stats
+    stats: legacy.stats ?? { tasksCompleted: 0, totalTasks: 0 }
   };
 }
 

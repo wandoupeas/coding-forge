@@ -29,6 +29,7 @@ import { createVerifyCommand } from './commands/verify.js';
 import { createRecordCommand } from './commands/record.js';
 import { createStatusCommand } from './commands/status.js';
 import { createTaskCommand } from './commands/task.js';
+import { createSessionCommand } from './commands/session.js';
 
 function getVersion(): string {
   try {
@@ -73,6 +74,7 @@ export function createProgram(): Command {
   program.addCommand(createRecordCommand());
   program.addCommand(createStatusCommand());
   program.addCommand(createTaskCommand());
+  program.addCommand(createSessionCommand());
   program.addCommand(createUiCommand());
 
   return program;
