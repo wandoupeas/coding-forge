@@ -20,7 +20,8 @@ export function createKnowledgeCommand(): Command {
     .addCommand(createAddCommand())
     .addCommand(createCreateCommand())
     .addCommand(createListCommand())
-    .addCommand(createParseCommand());
+    .addCommand(createParseCommand())
+    .addCommand(createSyncStackCommand());
 
   return command;
 }
@@ -86,6 +87,20 @@ function createParseCommand(): Command {
         }
       } catch (error) {
         logger.error(`解析失败: ${error}`);
+        process.exit(1);
+      }
+    });
+}
+
+function createSyncStackCommand(): Command {
+  return new Command('sync-stack')
+    .description('根据 ADR 决策自动同步 tech-stack.md')
+    .option('--dry-run', '预览变更但不写入文件')
+    .action(async (options) => {
+      try {
+        await syncTechStack(options);
+      } catch (error) {
+        logger.error(`同步失败: ${error}`);
         process.exit(1);
       }
     });
@@ -563,6 +578,12 @@ async function createKnowledgeDoc(
   // 更新索引
   await rebuildKnowledgeIndex(basePath);
   
+  // 🔄 自动同步: 如果是 ADR，尝试同步 tech-stack.md
+  if (category === 'decisions' && filename.match(/^ADR-\d+/i)) {
+    logger.info('检测到 ADR 创建，检查技术栈同步...');
+    await trySyncTechStack(basePath, { silent: true });
+  }
+  
   console.log();
   logger.info(`提示: 编辑 ${relative(basePath, targetPath)}`);
 }
@@ -651,4 +672,467 @@ function generateKnowledgeTemplate(template: string, title: string): string {
 ## 参考
 `;
   }
+}
+
+// ============================================
+// Tech Stack 同步机制
+// ============================================
+
+interface TechStackChange {
+  category: 'frontend' | 'backend' | 'database' | 'devops';
+  type: 'add' | 'remove' | 'replace';
+  package?: string;
+  oldPackage?: string;
+  newPackage?: string;
+  version?: string;
+  reason?: string;
+  adrFile: string;
+}
+
+interface ParsedADR {
+  file: string;
+  status: string;
+  title: string;
+  decision: string;
+  changes: TechStackChange[];
+}
+
+/**
+ * 同步 ADR 决策到知识库
+ * 分析已接受 ADR 对 tech-stack.md 和 design/guidelines 的影响
+ * 生成待办任务报告，由 Agent 手动更新
+ */
+async function syncTechStack(options: { dryRun?: boolean } = {}): Promise<void> {
+  logger.h1('🔄 ADR 知识库同步分析');
+  
+  const basePath = process.cwd();
+  const decisionsDir = join(basePath, '.webforge', 'knowledge', 'decisions');
+  
+  // 1. 扫描所有 ADR 文件
+  const adrFiles = await scanADRFiles(decisionsDir);
+  logger.info(`发现 ${adrFiles.length} 个 ADR 文件`);
+  
+  // 2. 解析已接受的 ADR
+  const acceptedADRs: ParsedADR[] = [];
+  for (const file of adrFiles) {
+    const adr = await parseADRFile(file);
+    if (adr && adr.status.toLowerCase().includes('accepted')) {
+      acceptedADRs.push(adr);
+    }
+  }
+  
+  if (acceptedADRs.length === 0) {
+    logger.warning('没有发现已接受的 ADR');
+    return;
+  }
+  
+  logger.success(`已接受 ADR: ${acceptedADRs.length} 个`);
+  
+  // 3. 提取技术栈变更
+  const allChanges: TechStackChange[] = [];
+  for (const adr of acceptedADRs) {
+    allChanges.push(...adr.changes);
+  }
+  
+  if (allChanges.length === 0) {
+    logger.info('没有需要同步的技术栈变更');
+    return;
+  }
+  
+  // 4. 显示变更摘要
+  logger.h2('检测到的技术栈变更');
+  for (const change of allChanges) {
+    const icon = change.type === 'add' ? '➕' : change.type === 'remove' ? '➖' : '🔄';
+    if (change.type === 'replace') {
+      logger.info(`${icon} [${change.category}] ${change.oldPackage} → ${change.newPackage} (${change.adrFile})`);
+    } else {
+      logger.info(`${icon} [${change.category}] ${change.package} ${change.type === 'add' ? '添加' : '移除'} (${change.adrFile})`);
+    }
+  }
+  
+  if (options.dryRun) {
+    logger.info('\n(dry-run 模式，仅预览不生成任务)');
+    return;
+  }
+  
+  // 5. 生成知识库同步报告
+  const report = await generateKnowledgeSyncReport(basePath, acceptedADRs, allChanges);
+  
+  if (report.tasks.length === 0) {
+    logger.success('\n✅ 所有知识库文档已与 ADR 保持一致');
+    return;
+  }
+  
+  // 6. 显示待办任务
+  logger.h2('📝 需要人工审查的文档');
+  logger.info('以下文档需要根据 ADR 决策更新：\n');
+  
+  for (const task of report.tasks) {
+    const icon = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
+    logger.info(`${icon} [${task.type}] ${task.target}`);
+    logger.info(`   原因: ${task.reason}`);
+    if (task.details) {
+      logger.info(`   详情: ${task.details}`);
+    }
+    if (task.suggestedActions && task.suggestedActions.length > 0) {
+      logger.info(`   建议操作:`);
+      for (const action of task.suggestedActions) {
+        logger.info(`     - ${action}`);
+      }
+    }
+    console.log();
+  }
+  
+  logger.h2('📋 处理建议');
+  logger.info('1. 根据上述任务列表，逐一审查并更新相关文档');
+  logger.info('2. 更新完成后，再次运行 webforge knowledge sync-stack 验证');
+  logger.info('3. 确保所有 design/guidelines 与 ADR 决策保持一致\n');
+  
+  // 7. 重建索引
+  await rebuildKnowledgeIndex(basePath);
+}
+
+/**
+ * 扫描 ADR 文件
+ */
+async function scanADRFiles(decisionsDir: string): Promise<string[]> {
+  if (!existsSync(decisionsDir)) {
+    return [];
+  }
+  
+  const files = await readdir(decisionsDir);
+  return files
+    .filter(f => f.match(/^ADR-\d+.*\.md$/i))
+    .map(f => join(decisionsDir, f));
+}
+
+/**
+ * 解析 ADR 文件，提取技术栈变更
+ */
+async function parseADRFile(filePath: string): Promise<ParsedADR | null> {
+  const content = await readFile(filePath, 'utf-8');
+  const filename = basename(filePath);
+  
+  // 提取状态
+  const statusMatch = content.match(/\*\*状态\*\*:\s*(.+)/i);
+  const status = statusMatch ? statusMatch[1].trim() : 'Unknown';
+  
+  // 提取标题
+  const titleMatch = content.match(/^#\s*(.+)/m);
+  const title = titleMatch ? titleMatch[1].trim() : filename;
+  
+  // 提取决策（在 "## 决策" 部分）
+  const decisionMatch = content.match(/##\s*决策[\s\S]*?(?=##|$)/);
+  const decision = decisionMatch ? decisionMatch[0] : '';
+  
+  // 提取技术栈变更
+  const changes: TechStackChange[] = [];
+  
+  // 检测技术栈变更模式
+  // 1. 检测 "使用 X 替代 Y" 模式
+  const replacePattern = /使用\s+(\w+)\s+替代\s+(\w+)|采用\s+(\w+)\s+.*替代\s+(\w+)|迁移到\s+(\w+).*从\s+(\w+)/gi;
+  let match;
+  while ((match = replacePattern.exec(content)) !== null) {
+    const newTech = match[1] || match[3] || match[5];
+    const oldTech = match[2] || match[4] || match[6];
+    if (newTech && oldTech) {
+      changes.push({
+        category: inferCategory(newTech),
+        type: 'replace',
+        oldPackage: oldTech.toLowerCase(),
+        newPackage: newTech.toLowerCase(),
+        reason: `ADR 决策: ${title}`,
+        adrFile: filename
+      });
+    }
+  }
+  
+  // 2. 检测依赖添加模式（在核心依赖部分）
+  const packagePatterns = [
+    /["'](\w+)["']\s*:\s*["']\^?([\d.]+)["']/g,
+    /(\w+)\s*[:@]\s*([\d.]+)/g
+  ];
+  
+  for (const pattern of packagePatterns) {
+    while ((match = pattern.exec(content)) !== null) {
+      const pkgName = match[1];
+      const version = match[2];
+      
+      // 跳过常见的非技术栈模式
+      if (isTechPackage(pkgName)) {
+        // 检查是否已经在 changes 中（替换模式）
+        const exists = changes.some(c => 
+          c.newPackage === pkgName.toLowerCase() || c.oldPackage === pkgName.toLowerCase()
+        );
+        
+        if (!exists) {
+          changes.push({
+            category: inferCategory(pkgName),
+            type: 'add',
+            package: pkgName.toLowerCase(),
+            version: version,
+            reason: `ADR 决策: ${title}`,
+            adrFile: filename
+          });
+        }
+      }
+    }
+  }
+  
+  return { file: filePath, status, title, decision, changes };
+}
+
+/**
+ * 判断是否为技术包名
+ */
+function isTechPackage(name: string): boolean {
+  const techPackages = [
+    'react', 'vue', 'angular', 'svelte', 'next', 'nuxt',
+    'express', 'koa', 'fastify', 'nest',
+    'axios', 'alova', 'fetch', 'swr', 'tanstack',
+    'prisma', 'typeorm', 'sequelize', 'mongoose',
+    'zustand', 'redux', 'mobx', 'pinia', 'recoil',
+    'antd', 'mui', 'chakra', 'tailwind',
+    'vite', 'webpack', 'rollup', 'esbuild',
+    'jest', 'vitest', 'cypress', 'playwright',
+    'typescript', 'javascript', 'python', 'go', 'rust'
+  ];
+  
+  return techPackages.some(p => name.toLowerCase().includes(p));
+}
+
+/**
+ * 推断技术类别
+ */
+function inferCategory(pkgName: string): TechStackChange['category'] {
+  const name = pkgName.toLowerCase();
+  
+  // 前端框架/库
+  if (name.match(/react|vue|angular|svelte|next|nuxt|antd|mui|chakra|tailwind|zustand|redux|mobx|pinia/)) {
+    return 'frontend';
+  }
+  
+  // HTTP 客户端
+  if (name.match(/axios|alova|swr|tanstack/)) {
+    return 'frontend';
+  }
+  
+  // 后端框架
+  if (name.match(/express|koa|fastify|nest/)) {
+    return 'backend';
+  }
+  
+  // 数据库/ORM
+  if (name.match(/prisma|typeorm|sequelize|mongoose|postgres|mysql|mongo/)) {
+    return 'database';
+  }
+  
+  // 构建工具
+  if (name.match(/vite|webpack|rollup|esbuild/)) {
+    return 'frontend';
+  }
+  
+  // 测试工具
+  if (name.match(/jest|vitest|cypress|playwright/)) {
+    return 'devops';
+  }
+  
+  return 'frontend'; // 默认
+}
+
+/**
+ * 尝试同步 Tech Stack（生成待办任务模式）
+ * 在 ADR 创建/更新后自动调用
+ * 
+ * 注意：此功能不自动修改任何文档，仅生成任务报告
+ * 由 Agent 根据报告手动更新相关文档
+ */
+async function trySyncTechStack(
+  basePath: string,
+  options: { silent?: boolean } = {}
+): Promise<void> {
+  try {
+    const decisionsDir = join(basePath, '.webforge', 'knowledge', 'decisions');
+    
+    // 扫描所有 ADR 文件
+    const adrFiles = await scanADRFiles(decisionsDir);
+    if (adrFiles.length === 0) return;
+    
+    // 解析已接受的 ADR
+    const acceptedADRs: ParsedADR[] = [];
+    for (const file of adrFiles) {
+      const adr = await parseADRFile(file);
+      if (adr && adr.status.toLowerCase().includes('accepted')) {
+        acceptedADRs.push(adr);
+      }
+    }
+    
+    if (acceptedADRs.length === 0) return;
+    
+    // 提取技术栈变更
+    const allChanges: TechStackChange[] = [];
+    for (const adr of acceptedADRs) {
+      allChanges.push(...adr.changes);
+    }
+    
+    if (allChanges.length === 0) return;
+    
+    if (!options.silent) {
+      logger.h2('🔄 ADR 技术栈变更检测');
+      for (const change of allChanges) {
+        const icon = change.type === 'add' ? '➕' : change.type === 'remove' ? '➖' : '🔄';
+        if (change.type === 'replace') {
+          logger.info(`${icon} ${change.oldPackage} → ${change.newPackage} (${change.adrFile})`);
+        } else {
+          logger.info(`${icon} ${change.package} ${change.type === 'add' ? '添加' : '移除'}`);
+        }
+      }
+    }
+    
+    // 🔄 生成知识库同步任务报告
+    const report = await generateKnowledgeSyncReport(basePath, acceptedADRs, allChanges);
+    
+    if (!options.silent && report.tasks.length > 0) {
+      logger.h2('📝 需要人工审查的文档');
+      logger.info('以下文档可能需要根据 ADR 决策更新：\n');
+      
+      for (const task of report.tasks) {
+        const icon = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
+        logger.info(`${icon} [${task.type}] ${task.target}`);
+        logger.info(`   原因: ${task.reason}`);
+        if (task.details) {
+          logger.info(`   详情: ${task.details}`);
+        }
+        console.log();
+      }
+      
+      logger.info('提示: 请根据 ADR 决策手动更新上述文档\n');
+    }
+    
+    // 重建索引
+    await rebuildKnowledgeIndex(basePath);
+  } catch (error) {
+    // 静默失败，不中断主流程
+    if (!options.silent) {
+      logger.warning(`知识库同步检测失败: ${error}`);
+    }
+  }
+}
+
+/**
+ * 知识库同步任务
+ */
+interface KnowledgeSyncTask {
+  type: 'tech-stack' | 'design-guideline' | 'adr-reference';
+  target: string;
+  reason: string;
+  priority: 'high' | 'medium' | 'low';
+  details?: string;
+  suggestedActions?: string[];
+}
+
+/**
+ * 知识库同步报告
+ */
+interface KnowledgeSyncReport {
+  generatedAt: string;
+  adrs: ParsedADR[];
+  changes: TechStackChange[];
+  tasks: KnowledgeSyncTask[];
+}
+
+/**
+ * 生成知识库同步报告
+ * 分析 ADR 变更对 tech-stack.md 和 design/guidelines 的影响
+ */
+async function generateKnowledgeSyncReport(
+  basePath: string,
+  adrs: ParsedADR[],
+  changes: TechStackChange[]
+): Promise<KnowledgeSyncReport> {
+  const tasks: KnowledgeSyncTask[] = [];
+  
+  const decisionsDir = join(basePath, '.webforge', 'knowledge', 'decisions');
+  const designDir = join(basePath, '.webforge', 'knowledge', 'design');
+  
+  // 1. 检查 tech-stack.md 是否需要更新
+  const techStackPath = join(decisionsDir, 'tech-stack.md');
+  if (existsSync(techStackPath)) {
+    const techStackContent = await readFile(techStackPath, 'utf-8');
+    
+    for (const change of changes) {
+      if (change.type === 'replace') {
+        // 检查是否包含旧技术
+        const hasOld = new RegExp(`"${change.oldPackage}"\\s*:`).test(techStackContent);
+        const hasNew = new RegExp(`"${change.newPackage}"\\s*:`).test(techStackContent);
+        
+        if (hasOld && !hasNew) {
+          tasks.push({
+            type: 'tech-stack',
+            target: 'decisions/tech-stack.md',
+            reason: `需要将 ${change.oldPackage} 替换为 ${change.newPackage}`,
+            priority: 'high',
+            details: `ADR ${change.adrFile} 决定使用 ${change.newPackage} 替代 ${change.oldPackage}`,
+            suggestedActions: [
+              `更新 \"核心依赖\" 部分的 JSON，将 "${change.oldPackage}" 替换为 "${change.newPackage}"`,
+              `添加 ${change.newPackage} 的简介和链接`,
+              `记录同步时间和对应的 ADR`
+            ]
+          });
+        }
+      }
+    }
+  }
+  
+  // 2. 检查 design/guidelines 是否需要更新
+  if (existsSync(designDir)) {
+    const files = await readdir(designDir);
+    const mdFiles = files.filter(f => f.endsWith('.md'));
+    
+    // 提取受影响的技术（被替换的旧技术）
+    const affectedTechs = changes
+      .filter(c => c.type === 'replace' && c.oldPackage)
+      .map(c => ({ 
+        old: c.oldPackage!.toLowerCase(), 
+        new: c.newPackage!.toLowerCase(),
+        adr: c.adrFile
+      }));
+    
+    for (const file of mdFiles) {
+      const filePath = join(designDir, file);
+      const content = await readFile(filePath, 'utf-8');
+      const contentLower = content.toLowerCase();
+      
+      for (const tech of affectedTechs) {
+        const regex = new RegExp(`\\b${tech.old}\\b`, 'gi');
+        const matches = contentLower.match(regex);
+        
+        if (matches && matches.length > 0) {
+          tasks.push({
+            type: 'design-guideline',
+            target: `design/${file}`,
+            reason: `文档引用了被替换的技术 ${tech.old}，需要根据 ADR 更新为 ${tech.new} 的实现规范`,
+            priority: matches.length > 5 ? 'high' : 'medium',
+            details: `发现 ${matches.length} 处 "${tech.old}" 引用，需更新为 "${tech.new}" 的具体使用规范`,
+            suggestedActions: [
+              `将 ${tech.old} 的具体使用规范替换为 ${tech.new} 的规范`,
+              `更新代码示例和配置说明`,
+              `检查相关工具和插件是否需要变更`,
+              `在文档中添加迁移说明，引用 ADR ${tech.adr}`
+            ]
+          });
+        }
+      }
+    }
+  }
+  
+  // 3. 检查 ADR 之间的引用一致性
+  // TODO: 检查是否有 ADR 引用了已被替换的技术
+  
+  return {
+    generatedAt: new Date().toISOString(),
+    adrs,
+    changes,
+    tasks
+  };
 }
