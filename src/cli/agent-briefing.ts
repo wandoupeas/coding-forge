@@ -18,6 +18,7 @@ import { loadWorkspaceState } from '../core/workspace.js';
 import type {
   Task,
   WorkspaceDeliverableIndexEntry,
+  WorkspaceKnowledgeIndexEntry,
   WorkspaceRuntime,
   WorkspaceSuperpowersRun,
   WorkspaceWorkflowContext,
@@ -76,6 +77,13 @@ export async function buildAgentBriefing(
     workflowContext?.threadId
       ? currentWorkspace.indexes.threads.find((link) => link.id === workflowContext.threadId) ?? null
       : null;
+  
+  // 查找与当前任务相关的知识文档
+  // 优先使用 task.knowledgeRefs，如果没有则通过标签匹配
+  const taskRelatedKnowledge = nextTask
+    ? findTaskRelatedKnowledge(nextTask, currentWorkspace.indexes.knowledge)
+    : [];
+  
   const [permissions, superpowers, observation, latestSuperpowersRun] = await Promise.all([
     loadPermissionHints(basePath),
     nextTask
@@ -115,6 +123,7 @@ export async function buildAgentBriefing(
       currentWorkspace.indexes.sessions.map((session) => session.id),
       latestSession !== null,
       pendingReview.length > 0,
+      taskRelatedKnowledge,
       latestSuperpowersRun,
       workflowContext,
       threadLink
@@ -163,10 +172,60 @@ function deriveNextAction(
   return '当前没有 ready task，先检查阻塞项或重新规划任务图。';
 }
 
+/**
+ * 根据任务查找相关的知识文档
+ * 
+ * 优先级：
+ * 1. 如果 task.knowledgeRefs 存在，直接使用（显式关联）
+ * 2. 否则通过标签/路径/标题匹配（隐式关联）
+ */
+function findTaskRelatedKnowledge(
+  task: Task,
+  knowledgeEntries: WorkspaceKnowledgeIndexEntry[]
+): WorkspaceKnowledgeIndexEntry[] {
+  // 1. 优先使用显式关联的 knowledgeRefs
+  if (task.knowledgeRefs && task.knowledgeRefs.length > 0) {
+    const refsSet = new Set(task.knowledgeRefs);
+    return knowledgeEntries.filter((entry) => refsSet.has(entry.path));
+  }
+  
+  // 2. 回退到隐式匹配（通过标签、路径、标题）
+  const taskIdLower = task.id.toLowerCase();
+  const phaseLower = task.phase.toLowerCase();
+  const titleWords = task.title.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length >= 2); // 只保留2个字符以上的词
+  
+  return knowledgeEntries.filter((entry) => {
+    // 检查 tags 是否包含任务ID或阶段
+    if (entry.tags) {
+      const entryTags = entry.tags.map((t) => t.toLowerCase());
+      if (entryTags.includes(taskIdLower)) return true;
+      if (entryTags.includes(phaseLower)) return true;
+    }
+    
+    // 检查文档路径是否包含任务相关关键词
+    const entryPath = entry.path.toLowerCase();
+    if (entryPath.includes(taskIdLower)) return true;
+    if (entryPath.includes(phaseLower)) return true;
+    
+    // 检查文档标题是否包含任务关键词
+    const entryTitle = entry.title.toLowerCase();
+    const matchingWords = titleWords.filter((word) => 
+      entryTitle.includes(word) || entryPath.includes(word)
+    );
+    if (matchingWords.length >= 1) return true;
+    
+    return false;
+  });
+}
+
 function deriveReadOrder(
   knownSessionIds: string[],
   hasSession: boolean,
   hasPendingReview: boolean,
+  taskRelatedKnowledge: WorkspaceKnowledgeIndexEntry[],
   latestSuperpowersRun: WorkspaceSuperpowersRun | null,
   workflowContext: WorkspaceWorkflowContext | null,
   threadLink: { artifacts: string[] } | null
@@ -182,6 +241,14 @@ function deriveReadOrder(
   }
 
   shouldRead.push('.webforge/knowledge/index.json');
+  
+  // 添加与当前任务相关的知识文档（在knowledge/index.json之后）
+  for (const entry of taskRelatedKnowledge) {
+    if (!shouldRead.includes(entry.path)) {
+      shouldRead.push(entry.path);
+    }
+  }
+  
   if (latestSuperpowersRun) {
     for (const artifact of latestSuperpowersRun.artifacts) {
       if (!shouldRead.includes(artifact.path)) {

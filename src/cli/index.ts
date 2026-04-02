@@ -28,6 +28,7 @@ import logger from './utils/logger.js';
 import { createVerifyCommand } from './commands/verify.js';
 import { createRecordCommand } from './commands/record.js';
 import { createStatusCommand } from './commands/status.js';
+import { createTaskCommand } from './commands/task.js';
 
 function getVersion(): string {
   try {
@@ -71,6 +72,7 @@ export function createProgram(): Command {
   program.addCommand(createVerifyCommand());
   program.addCommand(createRecordCommand());
   program.addCommand(createStatusCommand());
+  program.addCommand(createTaskCommand());
   program.addCommand(createUiCommand());
 
   return program;

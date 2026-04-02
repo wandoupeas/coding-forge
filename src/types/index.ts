@@ -32,6 +32,12 @@ export interface Task {
   executionMode?: TaskExecutionMode;  // 执行模式，默认 'auto'
   workflowContext?: WorkspaceWorkflowContext;
   metadata?: Record<string, any>;
+  /**
+   * 关联的知识文档路径列表
+   * 用于 onboard 时推荐 Agent 先阅读相关文档
+   * 示例: [".webforge/knowledge/decisions/ADR-001-clean-architecture.md"]
+   */
+  knowledgeRefs?: string[];
 }
 
 // ==================== Phase 类型 ====================

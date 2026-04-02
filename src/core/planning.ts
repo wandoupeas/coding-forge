@@ -47,6 +47,114 @@ export interface ExtractedTask {
   phase?: string;
   priority: number;
   dependsOn: string[];
+  knowledgeRefs?: string[];
+}
+
+/**
+ * 任务类型到知识文档类型的映射
+ * 用于自动关联相关知识文档（通用规则，不绑定具体项目）
+ */
+const TASK_KNOWLEDGE_TYPES: Record<string, Array<{ category: string; type?: string; keywords?: string[] }>> = {
+  // 前端相关 - 推荐 design/frontend 类型文档
+  'frontend': [{ category: 'design', type: 'frontend' }],
+  
+  // 后端相关 - 推荐 design/backend 或 decisions 类型文档
+  'backend': [{ category: 'design', type: 'backend' }, { category: 'decisions' }],
+  
+  // 数据库相关 - 推荐 design/database 类型文档
+  'database': [{ category: 'design', type: 'database' }],
+  
+  // 测试相关 - 推荐 design/testing 类型文档
+  'testing': [{ category: 'design', type: 'testing' }],
+  
+  // 架构相关 - 推荐 design/architecture 类型文档
+  'architecture': [{ category: 'design', type: 'architecture' }],
+  
+  // 默认
+  'default': []
+};
+
+/**
+ * 根据任务标题和阶段推断知识文档关联
+ * 基于项目的 knowledge/index.json 动态查找，不硬编码具体文档
+ */
+async function inferKnowledgeRefs(
+  basePath: string,
+  title: string,
+  phase: string,
+  techStack?: TechStack
+): Promise<string[]> {
+  const titleLower = title.toLowerCase();
+  const knowledgeTypes = new Set<string>();
+  
+  // 根据标题关键词匹配知识文档类型
+  if (titleLower.includes('前端') || titleLower.includes('frontend') || 
+      titleLower.includes('react') || titleLower.includes('vue') ||
+      titleLower.includes('vite') || titleLower.includes('ui')) {
+    knowledgeTypes.add('frontend');
+  }
+  if (titleLower.includes('后端') || titleLower.includes('backend') || 
+      titleLower.includes('api') || titleLower.includes('接口') ||
+      titleLower.includes('server')) {
+    knowledgeTypes.add('backend');
+  }
+  if (titleLower.includes('数据库') || titleLower.includes('database') || 
+      titleLower.includes('prisma') || titleLower.includes('schema') ||
+      titleLower.includes('sql') || titleLower.includes('rls') ||
+      titleLower.includes('租户') || titleLower.includes('tenant')) {
+    knowledgeTypes.add('database');
+  }
+  if (titleLower.includes('测试') || titleLower.includes('test') || 
+      titleLower.includes('e2e') || titleLower.includes('unit')) {
+    knowledgeTypes.add('testing');
+  }
+  if (titleLower.includes('架构') || titleLower.includes('architecture') || 
+      titleLower.includes('设计') || titleLower.includes('design')) {
+    knowledgeTypes.add('architecture');
+  }
+  
+  // 根据技术栈补充
+  if (techStack) {
+    if (techStack.frontend && (techStack.frontend.includes('react') || techStack.frontend.includes('vue'))) {
+      knowledgeTypes.add('frontend');
+    }
+    if (techStack.database && techStack.database.includes('postgres')) {
+      knowledgeTypes.add('database');
+    }
+  }
+  
+  // 从知识索引中查找匹配的文档
+  const knowledgeIndexPath = join(basePath, '.webforge', 'knowledge', 'index.json');
+  const knowledgeIndex = await readJson<WorkspaceKnowledgeIndexEntry[]>(knowledgeIndexPath);
+  
+  if (!knowledgeIndex || knowledgeIndex.length === 0) {
+    return [];
+  }
+  
+  const matchedRefs: string[] = [];
+  
+  for (const entry of knowledgeIndex) {
+    // 匹配 design 目录下的文档
+    if (entry.type === 'design') {
+      // 从路径中提取文档类型，如 design/frontend-guidelines.md -> frontend
+      const pathMatch = entry.path.match(/design\/([a-z]+)-/);
+      if (pathMatch) {
+        const docType = pathMatch[1]; // frontend, backend, database, testing, architecture
+        if (knowledgeTypes.has(docType)) {
+          matchedRefs.push(entry.path);
+        }
+      }
+    }
+    
+    // 匹配 decisions 目录下的文档（后端任务关联）
+    if (entry.type === 'decision' && knowledgeTypes.has('backend')) {
+      // 决策文档通常与架构/后端相关
+      matchedRefs.push(entry.path);
+    }
+  }
+  
+  // 去重并返回
+  return [...new Set(matchedRefs)];
 }
 
 export interface PlanningResult {
@@ -261,7 +369,8 @@ export async function buildPlanFromKnowledge(
         superpowers: options.superpowers,
         execution: options.execution
       })
-    : generateSmartTasks(
+    : await generateSmartTasks(
+    basePath,
     phases,
     template,
     analysis,
@@ -765,14 +874,15 @@ function generatePhases(template: string): Phase[] {
   }));
 }
 
-function generateSmartTasks(
+async function generateSmartTasks(
+  basePath: string,
   phases: Phase[],
   template: string,
   analysis: { keywords: string[]; techStack: string[] },
   requiredSkills: string[],
   options: { superpowers?: boolean; execution?: 'subagent' | 'inline' },
   selectedTechStack?: TechStack
-): Task[] {
+): Promise<Task[]> {
   const tasks: Task[] = [];
   let taskCounter = 1;
 
@@ -795,16 +905,21 @@ function generateSmartTasks(
       item.toLowerCase().includes('postgres')
     )
   };
-
+  
+  // 用于跟踪已使用的知识文档
+  const usedKnowledgeRefs = new Map<string, string[]>()
+  
   for (const phase of phases) {
-    const phaseTasks = createSmartPhaseTasks(
+    const phaseTasks = await createSmartPhaseTasks(
+      basePath,
       phase,
       taskCounter,
       template,
       features,
       requiredSkills,
       options,
-      selectedTechStack
+      selectedTechStack,
+      usedKnowledgeRefs
     );
     tasks.push(...phaseTasks);
     taskCounter += phaseTasks.length;
@@ -813,7 +928,8 @@ function generateSmartTasks(
   return tasks;
 }
 
-function createSmartPhaseTasks(
+async function createSmartPhaseTasks(
+  basePath: string,
   phase: Phase,
   startCounter: number,
   template: string,
@@ -829,8 +945,9 @@ function createSmartPhaseTasks(
   },
   requiredSkills: string[],
   options: { superpowers?: boolean; execution?: 'subagent' | 'inline' },
-  techStack?: TechStack
-): Task[] {
+  techStack?: TechStack,
+  usedKnowledgeRefs?: Map<string, string[]>
+): Promise<Task[]> {
   const tasks: Task[] = [];
   const now = new Date().toISOString();
   const backendSkill = techStack?.backend.includes('go')
@@ -939,6 +1056,16 @@ function createSmartPhaseTasks(
       }
     }
 
+    // 推断知识文档关联
+    const knowledgeRefs = await inferKnowledgeRefs(basePath, def.title, phase.id, techStack);
+    
+    // 跟踪已使用的知识文档，同一类型的任务共享知识文档
+    if (usedKnowledgeRefs && knowledgeRefs.length > 0) {
+      const key = `${phase.id}-${def.assignee}`;
+      const existing = usedKnowledgeRefs.get(key) || [];
+      usedKnowledgeRefs.set(key, [...new Set([...existing, ...knowledgeRefs])]);
+    }
+
     tasks.push({
       id: taskId,
       phase: phase.id,
@@ -950,7 +1077,8 @@ function createSmartPhaseTasks(
       priority: def.priority,
       created_at: now,
       updated_at: now,
-      ...(Object.keys(metadata).length > 0 ? { metadata } : {})
+      ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+      ...(knowledgeRefs && knowledgeRefs.length > 0 ? { knowledgeRefs } : {})
     });
   }
 
@@ -1324,6 +1452,9 @@ function buildTasksFromExtracted(
       metadata.superpowers = true;
       metadata.execution = options.execution;
     }
+    
+    // 使用任务自带的知识文档关联，或留空让项目后续补充
+    const knowledgeRefs = task.knowledgeRefs;
 
     return {
       id: taskId,
@@ -1336,7 +1467,8 @@ function buildTasksFromExtracted(
       priority: task.priority,
       created_at: now,
       updated_at: now,
-      ...(Object.keys(metadata).length > 0 ? { metadata } : {})
+      ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+      ...(knowledgeRefs && knowledgeRefs.length > 0 ? { knowledgeRefs } : {})
     };
   });
 }
