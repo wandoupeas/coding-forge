@@ -13,6 +13,7 @@ export interface PlanOptions {
   force?: boolean;
   superpowers?: boolean;
   execution?: 'subagent' | 'inline';
+  autoKnowledge?: boolean; // 是否自动关联知识文档
   techStack?: TechStack;
   resolveTechStack?: (
     analysis: KnowledgeAnalysis
@@ -377,7 +378,8 @@ export async function buildPlanFromKnowledge(
     requiredSkills,
     {
       superpowers: options.superpowers,
-      execution: options.execution
+      execution: options.execution,
+      autoKnowledge: options.autoKnowledge
     },
     techStack
   );
@@ -880,7 +882,7 @@ async function generateSmartTasks(
   template: string,
   analysis: { keywords: string[]; techStack: string[] },
   requiredSkills: string[],
-  options: { superpowers?: boolean; execution?: 'subagent' | 'inline' },
+  options: { superpowers?: boolean; execution?: 'subagent' | 'inline'; autoKnowledge?: boolean },
   selectedTechStack?: TechStack
 ): Promise<Task[]> {
   const tasks: Task[] = [];
@@ -944,7 +946,7 @@ async function createSmartPhaseTasks(
     hasPostgres: boolean;
   },
   requiredSkills: string[],
-  options: { superpowers?: boolean; execution?: 'subagent' | 'inline' },
+  options: { superpowers?: boolean; execution?: 'subagent' | 'inline'; autoKnowledge?: boolean },
   techStack?: TechStack,
   usedKnowledgeRefs?: Map<string, string[]>
 ): Promise<Task[]> {
@@ -1056,14 +1058,17 @@ async function createSmartPhaseTasks(
       }
     }
 
-    // 推断知识文档关联
-    const knowledgeRefs = await inferKnowledgeRefs(basePath, def.title, phase.id, techStack);
-    
-    // 跟踪已使用的知识文档，同一类型的任务共享知识文档
-    if (usedKnowledgeRefs && knowledgeRefs.length > 0) {
-      const key = `${phase.id}-${def.assignee}`;
-      const existing = usedKnowledgeRefs.get(key) || [];
-      usedKnowledgeRefs.set(key, [...new Set([...existing, ...knowledgeRefs])]);
+    // 推断知识文档关联（默认开启，可通过 --no-auto-knowledge 禁用）
+    let knowledgeRefs: string[] | undefined;
+    if (options.autoKnowledge !== false) {
+      knowledgeRefs = await inferKnowledgeRefs(basePath, def.title, phase.id, techStack);
+      
+      // 跟踪已使用的知识文档，同一类型的任务共享知识文档
+      if (usedKnowledgeRefs && knowledgeRefs.length > 0) {
+        const key = `${phase.id}-${def.assignee}`;
+        const existing = usedKnowledgeRefs.get(key) || [];
+        usedKnowledgeRefs.set(key, [...new Set([...existing, ...knowledgeRefs])]);
+      }
     }
 
     tasks.push({

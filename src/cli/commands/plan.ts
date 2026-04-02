@@ -20,6 +20,7 @@ interface PlanOptions {
   superpowers?: boolean;
   execution?: 'subagent' | 'inline';
   interactive?: string;
+  autoKnowledge?: boolean; // 是否自动关联知识文档
 }
 
 export function createPlanCommand(): Command {
@@ -31,6 +32,7 @@ export function createPlanCommand(): Command {
     .option('--no-superpowers', '禁用 Superpowers 工作流')
     .option('-e, --execution <mode>', '执行模式: subagent/inline', 'subagent')
     .option('-i, --interactive [boolean]', '交互式选择技术栈', 'true')
+    .option('--no-auto-knowledge', '禁用自动关联知识文档（由 Agent 后续指定）')
     .action(async (options: PlanOptions) => {
       try {
         await planCommand(options);
@@ -64,6 +66,7 @@ export async function planCommand(
     force: options.force,
     superpowers: superpowersEnabled,
     execution: executionMode,
+    autoKnowledge: options.autoKnowledge,
     resolveTechStack: interactive
       ? async (analysis) => selectTechStack(analysis.techStack)
       : undefined

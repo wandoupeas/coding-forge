@@ -16,6 +16,16 @@ export type TaskExecutionMode =
   | 'auto'         // 由 runtime 主循环执行 (webforge run)
   | 'manual';      // 由 Agent 直接执行后手动通知 (webforge record notify)
 
+export type TaskModule = 
+  | 'frontend'     // 前端开发
+  | 'backend'      // 后端开发
+  | 'database'     // 数据库
+  | 'auth'         // 认证授权
+  | 'testing'      // 测试
+  | 'architecture' // 架构设计
+  | 'devops'       // 运维部署
+  | 'pm';          // 项目管理
+
 export interface Task {
   id: string;                    // T101
   phase: string;                 // P2 (后端开发)
@@ -32,6 +42,12 @@ export interface Task {
   executionMode?: TaskExecutionMode;  // 执行模式，默认 'auto'
   workflowContext?: WorkspaceWorkflowContext;
   metadata?: Record<string, any>;
+  /**
+   * 任务涉及的模块/领域列表
+   * 用于自动推断关联的知识文档
+   * 示例: ["frontend", "auth"]
+   */
+  modules?: TaskModule[];
   /**
    * 关联的知识文档路径列表
    * 用于 onboard 时推荐 Agent 先阅读相关文档

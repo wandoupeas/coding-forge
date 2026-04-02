@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import { join } from 'path';
 import logger from '../utils/logger.js';
 import { readJson, writeJson } from '../../utils/file.js';
-import type { Task, TaskStatus, TaskExecutionMode, WorkspaceKnowledgeIndexEntry } from '../../types/index.js';
+import type { Task, TaskStatus, TaskExecutionMode, TaskModule, WorkspaceKnowledgeIndexEntry } from '../../types/index.js';
 
 interface CreateTaskOptions {
   phase?: string;
@@ -19,6 +19,7 @@ interface CreateTaskOptions {
   assignee?: string;
   executionMode?: TaskExecutionMode;
   knowledge?: string[];
+  modules?: string[];      // 任务涉及的模块
   autoKnowledge?: boolean; // 是否自动推断知识文档（默认 true）
 }
 
@@ -29,6 +30,7 @@ interface UpdateTaskOptions {
   priority?: string;
   addKnowledge?: string[];
   removeKnowledge?: string[];
+  modules?: string[];      // 任务涉及的模块
   autoKnowledge?: boolean; // 自动补全知识文档（默认 true）
 }
 
@@ -55,6 +57,7 @@ function createCreateCommand(): Command {
     .option('--assignee <role>', '负责人角色', 'agent')
     .option('--execution-mode <mode>', '执行模式: auto|manual', 'auto')
     .option('-k, --knowledge <paths...>', '关联的知识文档路径（支持简写如 ADR-005, frontend-guidelines）')
+    .option('-m, --modules <modules...>', '任务涉及的模块: frontend|backend|database|auth|testing|architecture|devops|pm')
     .option('--no-auto-knowledge', '禁用自动推断知识文档')
     .action(async (taskId: string, options: CreateTaskOptions) => {
       try {
@@ -76,6 +79,7 @@ function createUpdateCommand(): Command {
     .option('--priority <n>', '优先级 1-5')
     .option('--add-knowledge <paths...>', '添加关联的知识文档')
     .option('--remove-knowledge <paths...>', '移除关联的知识文档')
+    .option('-m, --modules <modules...>', '任务涉及的模块: frontend|backend|database|auth|testing|architecture|devops|pm')
     .option('--no-auto-knowledge', '禁用自动根据任务标题补全知识文档')
     .action(async (taskId: string, options: UpdateTaskOptions) => {
       try {
@@ -137,14 +141,19 @@ async function createTask(
     throw new Error(`任务 ${taskId} 已存在`);
   }
 
-  // 处理 knowledgeRefs：优先使用用户指定，否则自动推断
+  // 处理 modules：由 Agent 显式指定，不自动推断
+  const modules = options.modules as TaskModule[] | undefined;
+  
+  // 处理 knowledgeRefs：基于 modules 关联，不根据标题自动推断
   let knowledgeRefs: string[] | undefined;
   if (options.knowledge && options.knowledge.length > 0) {
+    // 优先使用用户显式指定的知识文档
     knowledgeRefs = await Promise.all(options.knowledge.map((k) => resolveKnowledgePath(k, basePath)));
-  } else if (options.autoKnowledge !== false) {
-    // 默认自动推断知识文档
-    knowledgeRefs = await inferKnowledgeRefs(options.title!, options.phase || 'P1', basePath);
+  } else if (modules && modules.length > 0) {
+    // 基于 modules 关联知识文档
+    knowledgeRefs = await resolveKnowledgeByModules(basePath, modules);
   }
+  // 注意：不再根据标题自动推断，由 Agent 自行决定模块
 
   const now = new Date().toISOString();
   const newTask: Task = {
@@ -159,6 +168,7 @@ async function createTask(
     created_at: now,
     updated_at: now,
     executionMode: options.executionMode || 'auto',
+    ...(modules && modules.length > 0 ? { modules } : {}),
     knowledgeRefs
   };
 
@@ -200,6 +210,13 @@ async function updateTask(
   if (options.description) task.description = options.description;
   if (options.status) task.status = options.status;
   if (options.priority) task.priority = parseInt(options.priority, 10);
+  
+  // 更新 modules：由 Agent 显式指定
+  let modulesChanged = false;
+  if (options.modules && options.modules.length > 0) {
+    task.modules = options.modules as TaskModule[];
+    modulesChanged = true;
+  }
 
   // 处理 knowledgeRefs
   let knowledgeChanged = false;
@@ -226,12 +243,12 @@ async function updateTask(
     }
   }
 
-  // 自动补全知识文档（默认开启）
-  if (options.autoKnowledge !== false) {
+  // 如果 modules 发生变化，重新关联知识文档
+  if (modulesChanged && options.autoKnowledge !== false) {
     const currentRefs = new Set(task.knowledgeRefs || []);
-    const inferredRefs = await inferKnowledgeRefs(task.title, task.phase, basePath);
+    const moduleRefs = await resolveKnowledgeByModules(basePath, task.modules || []);
     let added = 0;
-    for (const ref of inferredRefs) {
+    for (const ref of moduleRefs) {
       if (!currentRefs.has(ref)) {
         currentRefs.add(ref);
         added++;
@@ -240,7 +257,7 @@ async function updateTask(
     if (added > 0) {
       task.knowledgeRefs = Array.from(currentRefs);
       knowledgeChanged = true;
-      logger.info(`自动补全 ${added} 个知识文档`);
+      logger.info(`基于模块关联 ${added} 个知识文档`);
     }
   }
 
@@ -341,6 +358,10 @@ async function showTask(
   logger.info(`优先级: ${task.priority}`);
   logger.info(`负责人: ${task.assignee}`);
   logger.info(`执行模式: ${task.executionMode || 'auto'}`);
+  
+  if (task.modules && task.modules.length > 0) {
+    logger.info(`涉及模块: ${task.modules.join(', ')}`);
+  }
 
   if (task.description) {
     console.log();
@@ -448,47 +469,20 @@ function getStatusIcon(status: string): string {
 }
 
 /**
- * 根据任务标题和阶段推断知识文档关联
- * 基于项目的 knowledge/index.json 动态查找，不硬编码具体文档
+ * 根据任务模块关联知识文档
+ * 基于项目的 knowledge/index.json 动态查找，由 Agent 指定模块
+ * 
+ * @param modules Agent 显式指定的模块列表
  */
-async function inferKnowledgeRefs(
-  title: string,
-  phase: string,
-  basePath: string = process.cwd()
+async function resolveKnowledgeByModules(
+  basePath: string,
+  modules: TaskModule[]
 ): Promise<string[]> {
-  const titleLower = title.toLowerCase();
-  const knowledgeTypes = new Set<string>();
+  if (!modules || modules.length === 0) {
+    return [];
+  }
   
-  // 根据标题关键词匹配知识文档类型
-  if (titleLower.includes('前端') || titleLower.includes('frontend') || 
-      titleLower.includes('react') || titleLower.includes('vue') ||
-      titleLower.includes('vite') || titleLower.includes('ui')) {
-    knowledgeTypes.add('frontend');
-  }
-  if (titleLower.includes('后端') || titleLower.includes('backend') || 
-      titleLower.includes('api') || titleLower.includes('接口') ||
-      titleLower.includes('server')) {
-    knowledgeTypes.add('backend');
-  }
-  if (titleLower.includes('数据库') || titleLower.includes('database') || 
-      titleLower.includes('prisma') || titleLower.includes('schema') ||
-      titleLower.includes('sql') || titleLower.includes('rls') ||
-      titleLower.includes('租户') || titleLower.includes('tenant')) {
-    knowledgeTypes.add('database');
-  }
-  if (titleLower.includes('测试') || titleLower.includes('test') || 
-      titleLower.includes('e2e') || titleLower.includes('unit')) {
-    knowledgeTypes.add('testing');
-  }
-  if (titleLower.includes('架构') || titleLower.includes('architecture') || 
-      titleLower.includes('设计') || titleLower.includes('design')) {
-    knowledgeTypes.add('architecture');
-  }
-  if (titleLower.includes('认证') || titleLower.includes('auth') || 
-      titleLower.includes('jwt') || titleLower.includes('登录') ||
-      titleLower.includes('权限')) {
-    knowledgeTypes.add('auth');
-  }
+  const knowledgeTypes = new Set<string>(modules);
   
   // 从知识索引中查找匹配的文档
   const knowledgeIndexPath = join(basePath, '.webforge', 'knowledge', 'index.json');
@@ -513,11 +507,26 @@ async function inferKnowledgeRefs(
       }
     }
     
-    // 匹配 decisions 目录下的文档（架构/认证相关）
+    // 匹配 decisions 目录下的文档（根据标题关键词）
     if (entry.type === 'decision') {
-      // 决策文档通常与架构、认证、数据库相关
-      if (knowledgeTypes.has('backend') || knowledgeTypes.has('architecture') || 
-          knowledgeTypes.has('auth') || knowledgeTypes.has('database')) {
+      const entryTitleLower = entry.title.toLowerCase();
+      // 根据知识类型匹配对应的决策文档
+      if (knowledgeTypes.has('database') && 
+          (entryTitleLower.includes('postgres') || entryTitleLower.includes('prisma') || 
+           entryTitleLower.includes('database') || entryTitleLower.includes('rls'))) {
+        matchedRefs.push(entry.path);
+      }
+      if (knowledgeTypes.has('auth') && 
+          (entryTitleLower.includes('auth') || entryTitleLower.includes('jwt'))) {
+        matchedRefs.push(entry.path);
+      }
+      if (knowledgeTypes.has('architecture') && 
+          (entryTitleLower.includes('architecture') || entryTitleLower.includes('clean'))) {
+        matchedRefs.push(entry.path);
+      }
+      if (knowledgeTypes.has('frontend') && 
+          (entryTitleLower.includes('frontend') || entryTitleLower.includes('alova') || 
+           entryTitleLower.includes('ant-design'))) {
         matchedRefs.push(entry.path);
       }
     }
