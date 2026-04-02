@@ -70,9 +70,26 @@ WebForge 是一个 `agent-first harness`。
 - 任务图变化：更新 `.webforge/tasks.json` / `.webforge/phases.json`
 - 执行推进：更新 `.webforge/runtime.json`
 - 新交付物：写入 `.webforge/deliverables/` 并更新 `index.json`
-- 新知识：写入 `.webforge/knowledge/` 并更新 `index.json`
+- 新知识：**必须使用 `webforge knowledge` 命令，禁止直接写入**
+  - 添加文档：`webforge knowledge add <file> --category <requirements|design|decisions|data>`
+  - 创建规范：`webforge knowledge create <name> --category <design|decisions>`
+  - 解析文档：`webforge knowledge parse [file]`
 - 暂停或恢复：更新 `.webforge/sessions/`
 - 协作消息：写入 `.webforge/mailboxes/*.jsonl`
+
+### ⚠️ 重要：Knowledge 目录写入限制
+
+**禁止直接写入 `.webforge/knowledge/` 根目录！**
+
+知识文档必须通过命令写入子目录：
+- `requirements/` - 需求文档 (PRD, 用户故事)
+- `design/` - 设计文档 (架构、规范、接口设计)
+- `decisions/` - 架构决策记录 (ADR)
+- `data/` - 数据字典、模型定义
+- `raw/` - 原始文档备份
+- `parsed/` - 解析后的结构化数据 (自动生成)
+
+**违规写入将被 `webforge doctor` 检测并警告。**
 
 ## superpowers 的位置
 

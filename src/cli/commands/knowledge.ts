@@ -18,6 +18,7 @@ export function createKnowledgeCommand(): Command {
   const command = new Command('knowledge')
     .description('知识文档管理')
     .addCommand(createAddCommand())
+    .addCommand(createCreateCommand())
     .addCommand(createListCommand())
     .addCommand(createParseCommand());
 
@@ -34,6 +35,23 @@ function createAddCommand(): Command {
         await addKnowledge(files, options);
       } catch (error) {
         logger.error(`添加失败: ${error}`);
+        process.exit(1);
+      }
+    });
+}
+
+function createCreateCommand(): Command {
+  return new Command('create')
+    .description('创建知识文档（规范、ADR等）')
+    .argument('<name>', '文档名称（如 backend-guidelines, ADR-001）')
+    .requiredOption('-c, --category <category>', '分类: design|decisions|requirements|data')
+    .option('-t, --template <template>', '模板类型: guidelines|adr|spec', 'spec')
+    .option('--title <title>', '文档标题')
+    .action(async (name: string, options) => {
+      try {
+        await createKnowledgeDoc(name, options);
+      } catch (error) {
+        logger.error(`创建失败: ${error}`);
         process.exit(1);
       }
     });
@@ -503,4 +521,134 @@ function buildParsedFilename(relativeSourcePath: string): string {
 
 function isManagedParsedOutput(basePath: string, outputDir: string): boolean {
   return resolve(outputDir) === resolve(basePath, '.webforge', 'knowledge', 'parsed');
+}
+
+interface CreateKnowledgeOptions {
+  category: string;
+  template: string;
+  title?: string;
+}
+
+async function createKnowledgeDoc(
+  name: string,
+  options: CreateKnowledgeOptions,
+  basePath: string = process.cwd()
+): Promise<void> {
+  logger.h1('📝 创建知识文档');
+
+  const category = resolveKnowledgeCategory(options.category);
+  
+  // 只允许 design/decisions/requirements/data，禁止 raw/parsed
+  if (category === 'raw' && options.category !== 'raw') {
+    throw new Error(`分类 "${options.category}" 无效或不允许直接写入。可用: design, decisions, requirements, data`);
+  }
+
+  const knowledgeDir = join(basePath, '.webforge', 'knowledge');
+  const targetDir = join(knowledgeDir, category);
+  await ensureDir(targetDir);
+
+  const filename = name.endsWith('.md') ? name : `${name}.md`;
+  const targetPath = join(targetDir, filename);
+
+  if (existsSync(targetPath)) {
+    throw new Error(`文档已存在: ${targetPath}`);
+  }
+
+  // 根据模板生成内容
+  const content = generateKnowledgeTemplate(options.template, options.title || name);
+  
+  await writeFile(targetPath, content, 'utf-8');
+  logger.success(`创建: ${filename} → ${category}/`);
+
+  // 更新索引
+  await rebuildKnowledgeIndex(basePath);
+  
+  console.log();
+  logger.info(`提示: 编辑 ${relative(basePath, targetPath)}`);
+}
+
+function generateKnowledgeTemplate(template: string, title: string): string {
+  const now = new Date().toISOString().split('T')[0];
+  
+  switch (template) {
+    case 'adr':
+      return `# ADR-XXX: ${title}
+
+## 状态
+
+- **状态**: 提案 (Proposed)
+- **日期**: ${now}
+- **决策人**: 
+
+## 背景
+
+描述决策背景和问题。
+
+## 考虑的方案
+
+### 方案 A
+- **优点**:
+- **缺点**:
+
+### 方案 B
+- **优点**:
+- **缺点**:
+
+## 决策
+
+**采用方案 X**，原因：
+1. 
+2. 
+3. 
+
+## 影响
+
+### 积极影响
+- 
+
+### 消极影响
+- 
+
+## 参考
+
+- 
+`;
+
+    case 'guidelines':
+      return `# ${title}
+
+> 制定时间: ${now}
+> 适用任务: 
+> 执行模式: 
+
+---
+
+## 1. 概述
+
+## 2. 规范内容
+
+## 3. 示例
+
+## 4. 检查清单
+
+- [ ] 
+
+---
+
+> 规范制定: Agent
+> 审核状态: pending_review
+`;
+
+    default:
+      return `# ${title}
+
+> 创建时间: ${now}
+
+## 概述
+
+## 详细内容
+
+## 参考
+`;
+  }
 }

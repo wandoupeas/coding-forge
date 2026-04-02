@@ -248,6 +248,10 @@ export async function buildDoctorReport(
         detail: `runtime=${workspace.runtime.status}, ready=${readyCount}, pending_review=${pendingReviewCount}`
       });
 
+      // 检查 knowledge 目录结构
+      const knowledgeStructureCheck = await checkKnowledgeStructure(basePath);
+      checks.push(knowledgeStructureCheck);
+
       const runtimeObservation = await getLatestRuntimeObservation(basePath);
       checks.push({
         id: 'runtime-observability',
@@ -551,6 +555,10 @@ function buildDoctorGuidance(report: DoctorReport): string[] {
     guidance.push('修复当前 thread linkage 缺失的索引、artifact 或 worktree，再沿该 thread 恢复。');
   }
 
+  if (report.checks.some((check) => check.id === 'knowledge-structure' && check.status === 'warn')) {
+    guidance.push('knowledge 根目录发现直接写入的文件，请使用 webforge knowledge add/create 命令移动到子目录，或手动整理。');
+  }
+
   if (guidance.length === 0) {
     guidance.push('仓库契约基本完整，可以直接让 Codex / Claude Code 按 AGENTS.md + .webforge/ 继续工作。');
     guidance.push('开始工作前先读 AGENTS.md、runtime.json、tasks.json 和 sessions/index.json。');
@@ -600,4 +608,48 @@ async function discoverMailboxWorkers(basePath: string): Promise<string[]> {
   }
 
   return Array.from(workerIds).sort();
+}
+
+async function checkKnowledgeStructure(basePath: string): Promise<DoctorCheck> {
+  const knowledgeDir = join(basePath, '.webforge', 'knowledge');
+  
+  if (!existsSync(knowledgeDir)) {
+    return {
+      id: 'knowledge-structure',
+      label: 'knowledge directory structure',
+      status: 'ok',
+      detail: 'knowledge 目录不存在，跳过检查'
+    };
+  }
+
+  const allowedCategories = ['requirements', 'design', 'decisions', 'data', 'raw', 'parsed'];
+  const rootFiles: string[] = [];
+
+  try {
+    const entries = await readdir(knowledgeDir, { withFileTypes: true });
+    for (const entry of entries) {
+      // 检查根目录下的文件（非目录、非 index.json）
+      if (entry.isFile() && entry.name !== 'index.json') {
+        rootFiles.push(entry.name);
+      }
+    }
+  } catch {
+    // 目录读取失败
+  }
+
+  if (rootFiles.length > 0) {
+    return {
+      id: 'knowledge-structure',
+      label: 'knowledge directory structure',
+      status: 'warn',
+      detail: `发现 ${rootFiles.length} 个文件直接放在 knowledge 根目录: ${rootFiles.join(', ')}。请使用 webforge knowledge add/create 命令写入子目录`
+    };
+  }
+
+  return {
+    id: 'knowledge-structure',
+    label: 'knowledge directory structure',
+    status: 'ok',
+    detail: 'knowledge 目录结构正确，文档已分类到子目录'
+  };
 }
