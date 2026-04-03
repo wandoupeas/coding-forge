@@ -10,7 +10,7 @@ import { existsSync } from 'fs';
 import logger from '../utils/logger.js';
 import { LogManager } from '../../core/logger.js';
 import { readJson, writeJson } from '../../utils/file.js';
-import type { Task, TaskStatus, TaskExecutionMode, TaskModule, WorkspaceKnowledgeIndexEntry, WorkspaceRuntime } from '../../types/index.js';
+import type { Task, TaskStatus, TaskExecutionMode, TaskModule, WorkspaceKnowledgeIndexEntry, WorkspaceRuntime, Phase } from '../../types/index.js';
 
 interface CreateTaskOptions {
   phase?: string;
@@ -177,16 +177,15 @@ async function createTask(
   tasksData.tasks.push(newTask);
   await writeJson(tasksPath, tasksData);
 
-  // 写入日志
-  const sessionId = `session-${Date.now()}`;
-  const logManager = new LogManager('task', basePath, sessionId);
+  // 写入日志（按 session + 日期收拢）
+  const logId = await getSessionBasedLogId(basePath);
+  const logManager = new LogManager('task', basePath, logId);
   await logManager.addEntry('info', 'task_created', {
     taskId,
     metadata: {
       title: newTask.title,
       phase: newTask.phase,
-      recordedBy: 'webforge task create',
-      sessionId
+      recordedBy: 'webforge task create'
     }
   });
 
@@ -280,43 +279,39 @@ async function updateTask(
   tasksData.tasks[taskIndex] = task;
   await writeJson(tasksPath, tasksData);
 
-  // 同步更新 runtime.json
-  const runtimePath = join(basePath, '.webforge', 'runtime.json');
-  let sessionId = `session-${Date.now()}`;
-  if (existsSync(runtimePath)) {
-    const runtime = await readJson<WorkspaceRuntime>(runtimePath);
-    if (runtime) {
-      runtime.updatedAt = now;
-      runtime.taskId = taskId;
-      runtime.phaseId = task.phase ?? runtime.phaseId;
-      
-      // 如果任务状态变化，更新 summary
-      if (options.status) {
+  // 当任务状态变更时，同步更新 runtime 和阶段状态
+  if (options.status) {
+    // 更新 runtime.json
+    const runtimePath = join(basePath, '.webforge', 'runtime.json');
+    if (existsSync(runtimePath)) {
+      const runtime = await readJson<WorkspaceRuntime>(runtimePath);
+      if (runtime) {
+        runtime.updatedAt = now;
+        runtime.taskId = taskId;
+        runtime.phaseId = task.phase ?? runtime.phaseId;
         runtime.summary = `${taskId} → ${options.status}`;
-      } else {
-        runtime.summary = `${taskId} updated`;
+        await writeJson(runtimePath, runtime);
       }
-      
-      // 获取 sessionId 用于日志
-      if (runtime.sessionId) {
-        sessionId = runtime.sessionId;
-      }
-      
-      await writeJson(runtimePath, runtime);
+    }
+
+    // 更新阶段进度和状态（当任务变为 completed 时）
+    if (options.status === 'completed' && task.phase) {
+      await updatePhaseProgress(basePath, task.phase);
     }
   }
 
-  // 写入日志
-  const logManager = new LogManager('task', basePath, sessionId);
-  await logManager.addEntry('info', 'task_updated', {
-    taskId,
-    metadata: {
-      status: options.status,
-      title: options.title,
-      recordedBy: 'webforge task update',
-      sessionId
-    }
-  });
+  // 关键节点才记录日志：task 状态流转
+  if (options.status) {
+    const logId = await getSessionBasedLogId(basePath);
+    const logManager = new LogManager('task', basePath, logId);
+    await logManager.addEntry('info', 'task_status_changed', {
+      taskId,
+      metadata: {
+        status: options.status,
+        recordedBy: 'webforge task update'
+      }
+    });
+  }
 
   logger.success(`更新任务 ${taskId}`);
   if (knowledgeChanged) {
@@ -587,4 +582,86 @@ async function resolveKnowledgeByModules(
   
   // 去重并返回
   return [...new Set(matchedRefs)];
+}
+/**
+ * 更新阶段进度和状态
+ * 当任务状态变为 completed 时自动调用
+ */
+async function updatePhaseProgress(
+  basePath: string,
+  phaseId: string
+): Promise<void> {
+  const phasesPath = join(basePath, '.webforge', 'phases.json');
+  const tasksPath = join(basePath, '.webforge', 'tasks.json');
+
+  // 读取 phases.json
+  const phasesData = await readJson<{ phases: Phase[] }>(phasesPath);
+  if (!phasesData) {
+    return;
+  }
+
+  const phaseIndex = phasesData.phases.findIndex((p) => p.id === phaseId);
+  if (phaseIndex === -1) {
+    return;
+  }
+
+  const phase = phasesData.phases[phaseIndex];
+
+  // 读取该阶段的所有任务
+  const tasksData = await readJson<{ tasks: Task[] }>(tasksPath);
+  if (!tasksData) {
+    return;
+  }
+
+  const phaseTasks = tasksData.tasks.filter((t) => t.phase === phaseId);
+  if (phaseTasks.length === 0) {
+    return;
+  }
+
+  const completedCount = phaseTasks.filter((t) => t.status === 'completed').length;
+  const progress = Math.round((completedCount / phaseTasks.length) * 100);
+
+  const now = new Date().toISOString();
+  const wasCompleted = phase.status === 'completed';
+
+  // 更新阶段状态
+  phase.progress = progress;
+  phase.updated_at = now;
+
+  if (progress === 100) {
+    phase.status = 'completed';
+    phase.completed_at = now;
+    if (!wasCompleted) {
+      logger.success(`阶段 ${phaseId} (${phase.name}) 已完成 (${completedCount}/${phaseTasks.length})`);
+    }
+  } else if (progress > 0) {
+    phase.status = 'in_progress';
+  } else {
+    phase.status = 'pending';
+  }
+
+  phasesData.phases[phaseIndex] = phase;
+  await writeJson(phasesPath, phasesData);
+}
+
+
+/**
+ * 获取基于 agent 会话 ID + 日期的日志 ID
+ * 用于将同一 session 同一天的操作收拢到同一日志文件
+ * 格式: {runtime.sessionId}-{YYYY-MM-DD} 或 default-{YYYY-MM-DD}
+ */
+async function getSessionBasedLogId(basePath: string): Promise<string> {
+  const runtimePath = join(basePath, '.webforge', 'runtime.json');
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  
+  let sessionId = 'default';
+  
+  if (existsSync(runtimePath)) {
+    const runtime = await readJson<WorkspaceRuntime>(runtimePath);
+    if (runtime?.sessionId) {
+      sessionId = runtime.sessionId;
+    }
+  }
+  
+  return `${sessionId}-${today}`;
 }
