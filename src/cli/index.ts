@@ -30,6 +30,7 @@ import { createRecordCommand } from './commands/record.js';
 import { createStatusCommand } from './commands/status.js';
 import { createTaskCommand } from './commands/task.js';
 import { createSessionCommand } from './commands/session.js';
+import { createLearnCommand } from './commands/learn.js';
 
 function getVersion(): string {
   try {
@@ -76,6 +77,7 @@ export function createProgram(): Command {
   program.addCommand(createTaskCommand());
   program.addCommand(createSessionCommand());
   program.addCommand(createUiCommand());
+  program.addCommand(createLearnCommand());
 
   return program;
 }

@@ -18,6 +18,7 @@ import {
   applySessionWorkflowContext,
   type Session
 } from '../../core/session.js';
+import { getLearningManager } from '../../core/learning.js';
 import { readJson } from '../../utils/file.js';
 import type { Task, Phase } from '../../types/index.js';
 
@@ -280,11 +281,64 @@ function createResumeCommand(): Command {
             logger.info(`  ... 还有 ${blockedTasks.length - 5} 个`);
           }
         }
+
+        // 显示智能提醒
+        await showLearningReminders(session.currentTaskId);
       } catch (error) {
         logger.error(`恢复会话失败: ${error}`);
         process.exit(1);
       }
     });
+}
+
+/**
+ * 显示学习提醒
+ */
+async function showLearningReminders(taskId?: string): Promise<void> {
+  try {
+    const manager = getLearningManager();
+    await manager.initialize();
+
+    // 获取相关提醒
+    const reminders = await manager.getReminderForSession({ taskId });
+
+    // 获取高优先级教训
+    const highPriorityLessons = await manager.getLessons({ priority: 'high' });
+
+    const hasReminders = reminders.length > 0;
+    const hasHighPriorityLessons = highPriorityLessons.length > 0;
+
+    if (!hasReminders && !hasHighPriorityLessons) {
+      return;
+    }
+
+    logger.info(`\n🎓 智能提醒:`);
+    logger.info('  ' + '─'.repeat(50));
+
+    if (hasReminders) {
+      logger.info(`  📌 基于当前上下文的提醒:`);
+      for (const r of reminders.slice(0, 3)) {
+        logger.info(`     • ${r.title}`);
+        if (r.content) {
+          logger.info(`       ${r.content.slice(0, 60)}${r.content.length > 60 ? '...' : ''}`);
+        }
+      }
+    }
+
+    if (hasHighPriorityLessons) {
+      if (hasReminders) {
+        logger.info('');
+      }
+      logger.info(`  🔴 重要经验教训:`);
+      for (const l of highPriorityLessons.slice(0, 2)) {
+        logger.info(`     • [${l.category}] ${l.title}`);
+      }
+    }
+
+    logger.info('  ' + '─'.repeat(50));
+  } catch {
+    // 静默处理，不影响主流程
+  }
 }
 
 /**

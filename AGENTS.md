@@ -98,6 +98,23 @@ T015: 修复前端TypeScript错误
   跨会话恢复入口。它回答“最近一次工作停在什么位置、建议下一步是什么”。
 - `.webforge/mailboxes/`
   异步协作接口。它不是任务真相源，只负责消息传递。
+- `.webforge/learning/`
+  智能错误记录与学习系统。记录纠正的错误和经验教训，帮助 agent 避免重复犯错。
+
+### Learning 目录写入限制
+
+**学习数据必须通过 `webforge learn` 命令管理！**
+
+| 文件/目录 | 正确操作方式 |
+|----------|-------------|
+| `.webforge/learning/errors.json` | `webforge learn record` |
+| `.webforge/learning/lessons.json` | `webforge learn lesson` |
+| `.webforge/learning/patterns.json` | （自动生成） |
+| `.webforge/learning/index.json` | （自动生成） |
+
+**违规写入将被 `webforge doctor` 检测并警告。**
+
+---
 
 ## 工作原则
 
@@ -182,6 +199,107 @@ T015: 修复前端TypeScript错误
 - 任务图唯一来源
 - runtime 主循环
 
+## 智能错误记录与学习系统
+
+harness 内置了智能错误记录系统，帮助 agent 避免重复犯错。
+
+### 何时记录错误
+
+以下情况应该记录错误：
+
+1. **用户纠正了 agent 的错误** - 如命令使用不当、违反规范等
+2. **测试失败需要修复** - 修复后记录避免再次犯错
+3. **工作流违规** - 违反了 AGENTS.md 规范
+4. **重复出现的 bug** - 同一问题多次发生
+
+### 记录错误
+
+```bash
+# 记录一个错误
+webforge learn record "错误标题" \
+  --category workflow \
+  --severity medium \
+  --description "详细描述" \
+  --fix "修复方法" \
+  --cause "根本原因" \
+  --prevention "预防措施"
+
+# 快速记录（使用默认值）
+webforge learn record "忘记更新 runtime.json" \
+  -c workflow -s medium \
+  --cause "不熟悉状态回写流程" \
+  --prevention "每次任务完成后运行 webforge doctor 检查"
+```
+
+### 错误类别
+
+- `syntax` - 语法错误
+- `logic` - 逻辑错误
+- `api_usage` - API 使用错误
+- `type_error` - 类型错误
+- `runtime` - 运行时错误
+- `workflow` - 工作流错误（违反 AGENTS.md 规范）
+- `dependency` - 依赖问题
+- `config` - 配置错误
+- `test` - 测试失败
+- `performance` - 性能问题
+- `security` - 安全问题
+- `other` - 其他
+
+### 严重级别
+
+- `critical` - 严重错误，可能导致数据丢失
+- `high` - 高优先级，必须立即修复
+- `medium` - 中等优先级，需要记录
+- `low` - 低优先级，小问题
+
+### 添加经验教训
+
+```bash
+# 添加经验教训
+webforge learn lesson "使用 webforge 命令" \
+  --content "不要直接修改 .webforge/ 文件，使用 CLI 命令" \
+  --priority high \
+  --errors E1 E2
+```
+
+### 复习错误
+
+```bash
+# 列出最近错误
+webforge learn list --limit 10
+
+# 查看错误详情
+webforge learn show E123456
+
+# 复习模式（查看教训）
+webforge learn review
+
+# 生成学习报告
+webforge learn report
+```
+
+### 会话启动提醒
+
+在新会话开始时，harness 会自动检查相关教训：
+
+```bash
+# 获取当前任务的提醒
+webforge learn remind --task T001
+```
+
+### 进入仓库后的读取顺序（更新）
+
+1. 读取 `.webforge/runtime.json`
+2. 读取 `.webforge/tasks.json`
+3. 读取 `.webforge/phases.json`
+4. 读取 `.webforge/sessions/index.json`
+5. 读取 `.webforge/knowledge/index.json`
+6. **读取 `.webforge/learning/index.json` 获取历史错误统计**
+7. 必要时再读取具体 knowledge、deliverable、mailbox 内容
+
+---
+
 ## 完成前检查
 
 在声称某项工作完成前，至少确认：
@@ -189,7 +307,8 @@ T015: 修复前端TypeScript错误
 1. 代码或文档已经落盘
 2. `.webforge/` 中相关状态已经更新
 3. 验证命令已经运行
-4. 新会话仅通过 `.webforge/` 就能恢复下一步
+4. **如发生错误或纠正，使用 `webforge learn record` 记录**
+5. 新会话仅通过 `.webforge/` 就能恢复下一步
 
 ## 对 Codex / Claude Code 的直接要求
 
@@ -225,7 +344,9 @@ T015: 修复前端TypeScript错误
 
 ## 规范版本
 
-- **版本**: v2.1
-- **更新日期**: 2026-04-02
+- **版本**: v2.2
+- **更新日期**: 2026-04-03
 - **生效范围**: 所有 WebForge 仓库及 Agent 操作
-- **主要变更**: 添加强制 CLI 操作规范、链式更新流程、代码提交规范
+- **主要变更**: 
+  - 添加强制 CLI 操作规范、链式更新流程、代码提交规范 (v2.1)
+  - 新增智能错误记录与学习系统 `webforge learn` (v2.2)
