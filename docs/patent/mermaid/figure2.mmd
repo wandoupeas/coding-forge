@@ -1,0 +1,15 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'secondaryColor': '#ffffff', 'tertiaryColor': '#ffffff', 'fontFamily': 'Arial', 'fontSize': '18px' }}}%%
+flowchart TB
+    R[".webforge/"] --> A["21 运行时状态文件<br/>runtime.json"]
+    A --> B["22 任务图文件<br/>tasks.json"]
+    B --> C["23 阶段图文件<br/>phases.json"]
+    C --> D["24 知识索引目录<br/>knowledge/"]
+    D --> E["25 交付物索引目录<br/>deliverables/"]
+    E --> F["26 会话索引目录<br/>sessions/"]
+    F --> G["27 邮箱目录<br/>mailboxes/"]
+    G --> H["28 日志目录<br/>logs/"]
+    H --> I["29 线程链接文件<br/>thread-links.json"]
+    I --> J["210 学习记录目录<br/>learning/"]
+
+    classDef patent fill:#ffffff,stroke:#000000,color:#000000,stroke-width:1px;
+    class R,A,B,C,D,E,F,G,H,I,J patent;

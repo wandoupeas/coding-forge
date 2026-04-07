@@ -1,0 +1,10 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'secondaryColor': '#ffffff', 'tertiaryColor': '#ffffff', 'fontFamily': 'Arial', 'fontSize': '18px' }}}%%
+flowchart TB
+    A["51 健康检查步骤"] --> B["52 恢复摘要<br/>生成步骤"]
+    B --> C["53 建议读取列表<br/>生成步骤"]
+    C --> D["54 工作流上下文<br/>校验步骤"]
+    D --> E["55 线程链接<br/>校验步骤"]
+    E --> F["56 下一动作<br/>输出步骤"]
+
+    classDef patent fill:#ffffff,stroke:#000000,color:#000000,stroke-width:1px;
+    class A,B,C,D,E,F patent;

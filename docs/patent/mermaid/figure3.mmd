@@ -1,0 +1,13 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'secondaryColor': '#ffffff', 'tertiaryColor': '#ffffff', 'fontFamily': 'Arial', 'fontSize': '18px' }}}%%
+flowchart TB
+    A["31 加载状态步骤"] --> B["32 选取就绪任务步骤"]
+    B --> C["33 认领任务步骤"]
+    C --> D["34 构建执行上下文步骤"]
+    D --> E["35 调用编码智能体执行步骤"]
+    E --> F["36 持久化交付物步骤"]
+    F --> G["37 更新任务、阶段、<br/>会话和运行时步骤"]
+    G --> H["38 解锁依赖任务步骤"]
+    H -. 继续循环 .-> B
+
+    classDef patent fill:#ffffff,stroke:#000000,color:#000000,stroke-width:1px;
+    class A,B,C,D,E,F,G,H patent;

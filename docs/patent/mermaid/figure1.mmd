@@ -1,0 +1,11 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'secondaryColor': '#ffffff', 'tertiaryColor': '#ffffff', 'fontFamily': 'Arial', 'fontSize': '18px' }}}%%
+flowchart TB
+    A["1 仓库内状态契约层"] --> B["2 状态服务层"]
+    B --> C["3 执行核心层"]
+    C --> D["4 编码智能体<br/>门面层"]
+    E["5 兼容命令行<br/>接口层"] --> C
+    F["6 工作流<br/>增强层"] --> D
+    G["7 观察界面层"] --> B
+
+    classDef patent fill:#ffffff,stroke:#000000,color:#000000,stroke-width:1px;
+    class A,B,C,D,E,F,G patent;
