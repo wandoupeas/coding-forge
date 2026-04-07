@@ -38,6 +38,11 @@ interface NotifyOptions {
   propagate?: boolean;
 }
 
+interface CompatIndexState {
+  items: Array<Record<string, unknown>>;
+  wrapped: boolean;
+}
+
 export function createRecordCommand(): Command {
   const command = new Command('record')
     .description('旁路回写：把直接完成的工作记录到 .webforge/');
@@ -295,9 +300,11 @@ async function persistSessionRecord(
   timestamp: string
 ): Promise<void> {
   const sessionsPath = join(basePath, '.webforge', 'sessions', 'index.json');
-  const sessions = existsSync(sessionsPath)
-    ? await readJson<Array<Record<string, unknown>>>(sessionsPath)
-    : [];
+  const { items: sessions, wrapped } = await readCompatIndex(
+    sessionsPath,
+    'sessions',
+    true
+  );
 
   const existingIndex = sessions.findIndex((s) => s.id === sessionId);
   const sessionRecord = {
@@ -315,7 +322,7 @@ async function persistSessionRecord(
     sessions.push(sessionRecord);
   }
 
-  await writeJson(sessionsPath, sessions);
+  await writeJson(sessionsPath, buildCompatIndexPayload('sessions', sessions, wrapped));
 }
 
 async function recordDeliverables(
@@ -325,9 +332,7 @@ async function recordDeliverables(
   timestamp: string
 ): Promise<void> {
   const indexPath = join(basePath, '.webforge', 'deliverables', 'index.json');
-  const deliverables = existsSync(indexPath)
-    ? await readJson<Array<Record<string, unknown>>>(indexPath)
-    : [];
+  const { items: deliverables, wrapped } = await readCompatIndex(indexPath, 'items', true);
 
   for (const filePath of paths) {
     const id = `D${String(deliverables.length + 1).padStart(3, '0')}`;
@@ -343,7 +348,7 @@ async function recordDeliverables(
     });
   }
 
-  await writeJson(indexPath, deliverables);
+  await writeJson(indexPath, buildCompatIndexPayload('items', deliverables, wrapped));
 }
 
 /**
@@ -472,12 +477,20 @@ async function recordSnapshot(
   // 更新 session 为 paused
   const sessionsPath = join(basePath, '.webforge', 'sessions', 'index.json');
   if (existsSync(sessionsPath)) {
-    const sessions = await readJson<Array<Record<string, unknown>>>(sessionsPath);
+    const { items: sessions, wrapped } = await readCompatIndex(
+      sessionsPath,
+      'sessions',
+      true
+    );
     const currentSession = sessions.find((s) => s.id === sessionId);
     if (currentSession) {
       currentSession.status = 'paused';
       currentSession.lastActive = now;
-      await writeJson(sessionsPath, sessions);
+      currentSession.last_active = now;
+      await writeJson(
+        sessionsPath,
+        buildCompatIndexPayload('sessions', sessions, wrapped)
+      );
     }
   }
 
@@ -746,3 +759,53 @@ async function inferTaskIdFromContext(basePath: string): Promise<string | null> 
   return null;
 }
 
+async function readCompatIndex(
+  path: string,
+  wrapperKey: string,
+  defaultWrapped: boolean
+): Promise<CompatIndexState> {
+  if (!existsSync(path)) {
+    return {
+      items: [],
+      wrapped: defaultWrapped
+    };
+  }
+
+  const raw = await readJson<unknown>(path);
+  if (Array.isArray(raw)) {
+    return {
+      items: raw.filter(isRecord),
+      wrapped: false
+    };
+  }
+
+  if (isRecord(raw) && Array.isArray(raw[wrapperKey])) {
+    return {
+      items: raw[wrapperKey].filter(isRecord),
+      wrapped: true
+    };
+  }
+
+  return {
+    items: [],
+    wrapped: defaultWrapped
+  };
+}
+
+function buildCompatIndexPayload(
+  wrapperKey: string,
+  items: Array<Record<string, unknown>>,
+  wrapped: boolean
+): Array<Record<string, unknown>> | Record<string, Array<Record<string, unknown>>> {
+  if (!wrapped) {
+    return items;
+  }
+
+  return {
+    [wrapperKey]: items
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
