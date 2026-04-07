@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, readFile, rm } from 'fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { buildInitVerificationSummary, initProject } from '../../cli/commands/init.js';
@@ -35,6 +35,9 @@ describe('init command adapter', () => {
       join(projectRoot, 'docs', 'methodology', 'superpowers-integration.md'),
       'utf-8'
     );
+    const preCommitHook = await readFile(join(projectRoot, '.githooks', 'pre-commit'), 'utf-8');
+    const commitMsgHook = await readFile(join(projectRoot, '.githooks', 'commit-msg'), 'utf-8');
+    const guardScript = await readFile(join(projectRoot, 'scripts', 'webforge-guard.mjs'), 'utf-8');
     const onboardingProtocol = await readFile(
       join(projectRoot, 'docs', 'examples', 'agent-onboarding-protocol.md'),
       'utf-8'
@@ -59,6 +62,9 @@ describe('init command adapter', () => {
     expect(agentGuide).toContain('webforge logs runtime --json');
     expect(superpowersGuide).toContain('与恢复协议的连接点');
     expect(superpowersGuide).toContain('doctor / onboard / resume / logs');
+    expect(preCommitHook).toContain('node scripts/webforge-guard.mjs pre-commit');
+    expect(commitMsgHook).toContain('node scripts/webforge-guard.mjs commit-msg "$1"');
+    expect(guardScript).toContain('commit message must start with a tracked task id');
     expect(onboardingProtocol).toContain('Agent Onboarding Protocol');
     expect(onboardingProtocol).toContain('webforge onboard --json');
     expect(onboardingProtocol).toContain('webforge doctor --json');
@@ -73,5 +79,34 @@ describe('init command adapter', () => {
     expect(output).toContain('onboard: canProceed=yes');
     expect(output).toContain('sample-project');
     expect(output).toContain('webforge onboard --json');
+  });
+
+  it('patches existing package.json with WebForge guard scripts during in-place init', async () => {
+    const packageJsonPath = join(sandboxDir, 'package.json');
+    await writeFile(
+      packageJsonPath,
+      JSON.stringify(
+        {
+          name: 'in-place-project',
+          private: true,
+          scripts: {
+            test: 'vitest'
+          }
+        },
+        null,
+        2
+      ),
+      'utf-8'
+    );
+
+    await initProject('in-place-project', { template: 'default', inPlace: true }, sandboxDir);
+
+    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf-8')) as {
+      scripts: Record<string, string>;
+    };
+
+    expect(packageJson.scripts['webforge:doctor']).toBe('webforge doctor --json');
+    expect(packageJson.scripts['webforge:guard']).toBe('node scripts/webforge-guard.mjs pre-commit');
+    expect(packageJson.scripts.prepare).toContain('git config core.hooksPath .githooks');
   });
 });

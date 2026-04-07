@@ -10,7 +10,8 @@ import { existsSync } from 'fs';
 import logger from '../utils/logger.js';
 import { LogManager } from '../../core/logger.js';
 import { readJson, writeJson } from '../../utils/file.js';
-import type { Task, TaskStatus, TaskExecutionMode, TaskModule, WorkspaceKnowledgeIndexEntry, WorkspaceRuntime, Phase } from '../../types/index.js';
+import type { Task, TaskStatus, TaskExecutionMode, TaskModule, WorkspaceRuntime, Phase } from '../../types/index.js';
+import { loadKnowledgeIndex, repairKnowledgeIndexIfNeeded } from '../../core/knowledge-index.js';
 
 interface CreateTaskOptions {
   phase?: string;
@@ -131,6 +132,7 @@ async function createTask(
   basePath: string = process.cwd()
 ): Promise<void> {
   const tasksPath = join(basePath, '.webforge', 'tasks.json');
+  const repairedKnowledgeIndex = await repairKnowledgeIndexIfNeeded(basePath);
 
   // 读取现有任务
   const tasksData = await readJson<{ tasks: Task[] }>(tasksPath);
@@ -190,6 +192,9 @@ async function createTask(
   });
 
   logger.success(`创建任务 ${taskId}: ${newTask.title}`);
+  if (repairedKnowledgeIndex) {
+    logger.warning('检测到 knowledge/index.json 缺失或损坏，已自动重建索引。');
+  }
   if (knowledgeRefs && knowledgeRefs.length > 0) {
     logger.info(`关联知识文档 (${knowledgeRefs.length}个):`);
     for (const ref of knowledgeRefs) {
@@ -204,6 +209,7 @@ async function updateTask(
   basePath: string = process.cwd()
 ): Promise<void> {
   const tasksPath = join(basePath, '.webforge', 'tasks.json');
+  const repairedKnowledgeIndex = await repairKnowledgeIndexIfNeeded(basePath);
 
   // 读取现有任务
   const tasksData = await readJson<{ tasks: Task[] }>(tasksPath);
@@ -314,6 +320,9 @@ async function updateTask(
   }
 
   logger.success(`更新任务 ${taskId}`);
+  if (repairedKnowledgeIndex) {
+    logger.warning('检测到 knowledge/index.json 缺失或损坏，已自动重建索引。');
+  }
   if (knowledgeChanged) {
     logger.info(`知识文档 (${task.knowledgeRefs?.length || 0}个):`);
     for (const ref of task.knowledgeRefs || []) {
@@ -464,8 +473,7 @@ async function resolveKnowledgePath(
   }
 
   // 尝试从知识索引查找
-  const knowledgeIndexPath = join(basePath, '.webforge', 'knowledge', 'index.json');
-  const knowledgeIndex = await readJson<WorkspaceKnowledgeIndexEntry[]>(knowledgeIndexPath);
+  const knowledgeIndex = await loadKnowledgeIndex(basePath, { repairIfInvalid: true });
 
   if (knowledgeIndex) {
     const inputLower = input.toLowerCase();
@@ -533,8 +541,7 @@ async function resolveKnowledgeByModules(
   const knowledgeTypes = new Set<string>(modules);
   
   // 从知识索引中查找匹配的文档
-  const knowledgeIndexPath = join(basePath, '.webforge', 'knowledge', 'index.json');
-  const knowledgeIndex = await readJson<WorkspaceKnowledgeIndexEntry[]>(knowledgeIndexPath);
+  const knowledgeIndex = await loadKnowledgeIndex(basePath, { repairIfInvalid: true });
   
   if (!knowledgeIndex || knowledgeIndex.length === 0) {
     return [];

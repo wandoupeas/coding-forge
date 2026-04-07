@@ -7,6 +7,18 @@ import { LogManager } from '../../core/logger.js';
 import { Mailbox } from '../../core/mailbox.js';
 import { buildDoctorReport, doctorCommand } from '../../cli/commands/doctor.js';
 
+const FULL_AGENTS_MD = `# test
+
+## ⚠️ 强制规范（MANDATORY）
+
+- 禁止直接修改状态文件
+- 必须使用 webforge task 创建和更新任务
+
+\`\`\`
+<task-id>: <task-title>
+\`\`\`
+`;
+
 describe('doctor command', () => {
   let workspaceDir = '';
 
@@ -40,7 +52,7 @@ describe('doctor command', () => {
 
   it('reports a healthy repo-side harness when contract files exist', async () => {
     await createWorkspace(workspaceDir, { projectName: 'doctor-ok' });
-    await writeFile(join(workspaceDir, 'AGENTS.md'), '# test', 'utf-8');
+    await writeFile(join(workspaceDir, 'AGENTS.md'), FULL_AGENTS_MD, 'utf-8');
     await mkdir(join(workspaceDir, 'docs', 'methodology'), { recursive: true });
     await writeFile(join(workspaceDir, 'docs', 'agent-guide.md'), '# agent guide', 'utf-8');
     await writeFile(
@@ -71,7 +83,7 @@ describe('doctor command', () => {
 
   it('supports JSON doctor reports for agent consumption', async () => {
     await createWorkspace(workspaceDir, { projectName: 'doctor-json' });
-    await writeFile(join(workspaceDir, 'AGENTS.md'), '# test', 'utf-8');
+    await writeFile(join(workspaceDir, 'AGENTS.md'), FULL_AGENTS_MD, 'utf-8');
     await mkdir(join(workspaceDir, 'docs', 'methodology'), { recursive: true });
     await writeFile(join(workspaceDir, 'docs', 'agent-guide.md'), '# agent guide', 'utf-8');
     await writeFile(
@@ -108,9 +120,38 @@ describe('doctor command', () => {
     expect(report.checks.find((check) => check.id === 'agent-profile')).toMatchObject({
       status: 'warn'
     });
+    expect(report.checks.find((check) => check.id === 'knowledge-index-integrity')).toMatchObject({
+      status: 'warn'
+    });
     expect(report.checks.find((check) => check.id === 'workspace-state')).toMatchObject({
       status: 'fail'
     });
+  });
+
+  it('fails on corrupted knowledge indexes and non-standard knowledge directories', async () => {
+    await createWorkspace(workspaceDir, { projectName: 'doctor-knowledge' });
+    await writeFile(join(workspaceDir, 'AGENTS.md'), '# test', 'utf-8');
+    await mkdir(join(workspaceDir, 'docs', 'methodology'), { recursive: true });
+    await writeFile(join(workspaceDir, 'docs', 'agent-guide.md'), '# agent guide', 'utf-8');
+    await writeFile(
+      join(workspaceDir, 'docs', 'methodology', 'superpowers-integration.md'),
+      '# superpowers',
+      'utf-8'
+    );
+    await mkdir(join(workspaceDir, '.webforge', 'knowledge', 'tech'), { recursive: true });
+    await writeFile(join(workspaceDir, '.webforge', 'knowledge', 'index.json'), '{broken', 'utf-8');
+
+    const report = await buildDoctorReport(workspaceDir);
+
+    expect(report.checks.find((check) => check.id === 'knowledge-index-integrity')).toMatchObject({
+      status: 'fail'
+    });
+    expect(report.checks.find((check) => check.id === 'knowledge-structure')).toMatchObject({
+      status: 'fail'
+    });
+    expect(report.guidance).toContain(
+      'knowledge/index.json 已损坏，请先运行 webforge knowledge reindex 重建索引，再继续恢复或建任务。'
+    );
   });
 
   it('warns on actionable observability signals such as unread mailboxes and pending review', async () => {

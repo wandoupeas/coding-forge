@@ -38,6 +38,22 @@ node <webforge-root>/dist/cli/index.js
 - `onboard.canProceed = true`
 - onboarding protocol 文档和实际 `onboard` 输出没有脱节
 
+默认还会补齐一套本地仓库门禁：
+
+- `.githooks/pre-commit`
+- `.githooks/commit-msg`
+- `scripts/webforge-guard.mjs`
+
+如果项目根目录已经存在 `package.json`，`init` 还会补充：
+
+- `scripts.webforge:doctor`
+- `scripts.webforge:guard`
+- `scripts.prepare`
+
+当当前目录本身就是 git 仓库根目录时，`init` 会尝试直接设置：
+
+- `git config core.hooksPath .githooks`
+
 常用示例：
 
 ```bash
@@ -323,6 +339,22 @@ webforge knowledge add docs/architecture.pdf docs/ui.docx -c design
 webforge knowledge parse
 webforge knowledge parse -c requirements
 webforge knowledge parse docs/spec.docx
+```
+
+### `webforge knowledge reindex`
+
+重建 `.webforge/knowledge/index.json`。
+
+适合这些场景：
+
+- 有人手工改坏了 knowledge index
+- 你想把散落在标准知识目录里的文档重新扫描进索引
+- `doctor` 提示 `knowledge index integrity` 失败
+
+常用示例：
+
+```bash
+webforge knowledge reindex
 ```
 
 ### `webforge knowledge list [-c category]`

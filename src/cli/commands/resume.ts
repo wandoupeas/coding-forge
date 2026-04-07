@@ -13,6 +13,7 @@ import {
 } from './logs.js';
 import logger from '../utils/logger.js';
 import { buildAgentBriefing } from '../agent-briefing.js';
+import { repairKnowledgeIndexIfNeeded } from '../../core/knowledge-index.js';
 
 export interface ResumeObservationSummary {
   readyTasks: number;
@@ -132,6 +133,7 @@ export function createResumeCommand(): Command {
 export async function buildResumeSummary(
   basePath: string = process.cwd()
 ): Promise<ResumeSummary> {
+  await repairKnowledgeIndexIfNeeded(basePath);
   const [briefing, runtimeLogs] = await Promise.all([
     buildAgentBriefing(basePath),
     buildRuntimeLogsSummary(undefined, basePath).catch(() => null)

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { createWorkspace, loadWorkspaceState } from '../../core/workspace.js';
@@ -18,7 +18,8 @@ describe('cli coverage branches', () => {
 
   beforeEach(async () => {
     workspaceDir = await mkdtemp(join(tmpdir(), 'webforge-cli-coverage-'));
-    await createWorkspace(workspaceDir, { projectName: 'cli-coverage' });
+    const state = await createWorkspace(workspaceDir, { projectName: 'cli-coverage' });
+    await writeFile(state.paths.sessionsIndex, JSON.stringify({ sessions: [] }, null, 2), 'utf-8');
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(process, 'cwd').mockReturnValue(workspaceDir);
   });
@@ -193,6 +194,26 @@ describe('cli coverage branches', () => {
 
     const blockedSummary = await buildResumeSummary(workspaceDir);
     expect(blockedSummary.nextAction).toContain('先排查阻塞任务 T301');
+  });
+
+  it('auto-rebuilds a corrupted knowledge index before generating the resume summary', async () => {
+    const workspace = await loadWorkspaceState(workspaceDir);
+    await writeFile(
+      join(workspace.paths.knowledgeDesign, 'frontend-guidelines.md'),
+      '# frontend\n\nkeep it stable',
+      'utf-8'
+    );
+    await writeFile(workspace.paths.knowledgeIndex, '{broken json', 'utf-8');
+
+    const summary = await buildResumeSummary(workspaceDir);
+    const repairedIndex = JSON.parse(await readFile(workspace.paths.knowledgeIndex, 'utf-8')) as Array<{
+      path: string;
+    }>;
+
+    expect(summary.shouldRead).toContain('.webforge/knowledge/index.json');
+    expect(
+      repairedIndex.some((entry) => entry.path === '.webforge/knowledge/design/frontend-guidelines.md')
+    ).toBe(true);
   });
 
   it('renders dry-run warnings and limits the previewed ready queue', async () => {

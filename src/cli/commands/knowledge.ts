@@ -3,11 +3,16 @@
  */
 
 import { Command } from 'commander';
-import { readdir, copyFile, writeFile, readFile, stat } from 'fs/promises';
+import { readdir, copyFile, writeFile, readFile } from 'fs/promises';
 import { join, extname, basename, relative, resolve } from 'path';
 import { existsSync } from 'fs';
 import logger from '../utils/logger.js';
-import { ensureDir, writeJson } from '../../utils/file.js';
+import { ensureDir } from '../../utils/file.js';
+import {
+  isManagedKnowledgeCategory,
+  rebuildKnowledgeIndex,
+  type KnowledgeCategory
+} from '../../core/knowledge-index.js';
 
 // 动态导入 xlsx（避免启动时加载）
 async function loadXlsx() {
@@ -21,6 +26,7 @@ export function createKnowledgeCommand(): Command {
     .addCommand(createCreateCommand())
     .addCommand(createListCommand())
     .addCommand(createParseCommand())
+    .addCommand(createReindexCommand())
     .addCommand(createSyncStackCommand());
 
   return command;
@@ -87,6 +93,20 @@ function createParseCommand(): Command {
         }
       } catch (error) {
         logger.error(`解析失败: ${error}`);
+        process.exit(1);
+      }
+    });
+}
+
+function createReindexCommand(): Command {
+  return new Command('reindex')
+    .description('重建 knowledge/index.json，修复手工修改或损坏后的知识索引')
+    .action(async () => {
+      try {
+        const entries = await rebuildKnowledgeIndex(process.cwd());
+        logger.success(`已重建知识索引: ${entries.length} 条`);
+      } catch (error) {
+        logger.error(`重建失败: ${error}`);
         process.exit(1);
       }
     });
@@ -417,93 +437,8 @@ async function parseXlsx(inputPath: string, outputPath: string): Promise<void> {
   }
 }
 
-type KnowledgeCategory =
-  | 'requirements'
-  | 'design'
-  | 'data'
-  | 'decisions'
-  | 'raw'
-  | 'parsed';
-
-interface KnowledgeIndexEntry {
-  id: string;
-  type: 'requirement' | 'design' | 'decision' | 'parsed' | 'note';
-  title: string;
-  path: string;
-  createdAt: string;
-  updatedAt: string;
-  tags?: string[];
-}
-
-const KNOWLEDGE_CATEGORIES: KnowledgeCategory[] = [
-  'requirements',
-  'design',
-  'data',
-  'decisions',
-  'raw',
-  'parsed'
-];
-
-async function rebuildKnowledgeIndex(basePath: string): Promise<void> {
-  const knowledgeDir = join(basePath, '.webforge', 'knowledge');
-  const indexPath = join(knowledgeDir, 'index.json');
-  const entries: KnowledgeIndexEntry[] = [];
-
-  await ensureDir(knowledgeDir);
-
-  for (const category of KNOWLEDGE_CATEGORIES) {
-    const categoryDir = join(knowledgeDir, category);
-    if (!existsSync(categoryDir)) {
-      continue;
-    }
-
-    const files = await readdir(categoryDir);
-    for (const file of files) {
-      const filePath = join(categoryDir, file);
-      const fileStat = await stat(filePath);
-      if (!fileStat.isFile()) {
-        continue;
-      }
-
-      const ext = extname(file).toLowerCase();
-      const relativePath = relative(basePath, filePath).replace(/\\/g, '/');
-      entries.push({
-        id: createKnowledgeEntryId(relativePath),
-        type: mapKnowledgeType(category),
-        title: basename(file, ext),
-        path: relativePath,
-        createdAt: fileStat.birthtime.toISOString(),
-        updatedAt: fileStat.mtime.toISOString(),
-        tags: [category, ext.replace(/^\./, '')].filter(Boolean)
-      });
-    }
-  }
-
-  entries.sort((left, right) => left.path.localeCompare(right.path));
-  await writeJson(indexPath, entries);
-}
-
-function mapKnowledgeType(category: KnowledgeCategory): KnowledgeIndexEntry['type'] {
-  switch (category) {
-    case 'requirements':
-      return 'requirement';
-    case 'design':
-      return 'design';
-    case 'decisions':
-      return 'decision';
-    case 'parsed':
-      return 'parsed';
-    default:
-      return 'note';
-  }
-}
-
-function createKnowledgeEntryId(relativePath: string): string {
-  return `knowledge-${relativePath.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()}`;
-}
-
 function resolveKnowledgeCategory(category: string): KnowledgeCategory {
-  if (KNOWLEDGE_CATEGORIES.includes(category as KnowledgeCategory) && category !== 'parsed') {
+  if (isManagedKnowledgeCategory(category) && category !== 'parsed') {
     return category as KnowledgeCategory;
   }
 

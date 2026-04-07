@@ -21,6 +21,7 @@ import {
 import logger from '../utils/logger.js';
 import { loadConfig } from '../../utils/config.js';
 import { loadWorkspaceState } from '../../core/workspace.js';
+import { inspectKnowledgeStructure, loadKnowledgeIndex } from '../../core/knowledge-index.js';
 
 export type DoctorCheckStatus = 'ok' | 'warn' | 'fail';
 
@@ -241,6 +242,11 @@ export async function buildDoctorReport(
   );
 
   if (existsSync(workspaceRoot)) {
+    const knowledgeIndexCheck = await checkKnowledgeIndexIntegrity(basePath);
+    checks.push(knowledgeIndexCheck);
+    const knowledgeStructureCheck = await checkKnowledgeStructure(basePath);
+    checks.push(knowledgeStructureCheck);
+
     try {
       const config = await loadConfig(basePath);
       const provider = config.agent?.provider ?? 'stub';
@@ -272,10 +278,6 @@ export async function buildDoctorReport(
         status: 'ok',
         detail: `runtime=${workspace.runtime.status}, ready=${readyCount}, pending_review=${pendingReviewCount}`
       });
-
-      // 检查 knowledge 目录结构
-      const knowledgeStructureCheck = await checkKnowledgeStructure(basePath);
-      checks.push(knowledgeStructureCheck);
 
       const runtimeObservation = await getLatestRuntimeObservation(basePath);
       checks.push({
@@ -584,8 +586,12 @@ function buildDoctorGuidance(report: DoctorReport): string[] {
     guidance.push('修复当前 thread linkage 缺失的索引、artifact 或 worktree，再沿该 thread 恢复。');
   }
 
-  if (report.checks.some((check) => check.id === 'knowledge-structure' && check.status === 'warn')) {
-    guidance.push('knowledge 根目录发现直接写入的文件，请使用 webforge knowledge add/create 命令移动到子目录，或手动整理。');
+  if (report.checks.some((check) => check.id === 'knowledge-index-integrity' && check.status === 'fail')) {
+    guidance.push('knowledge/index.json 已损坏，请先运行 webforge knowledge reindex 重建索引，再继续恢复或建任务。');
+  }
+
+  if (report.checks.some((check) => check.id === 'knowledge-structure' && check.status === 'fail')) {
+    guidance.push('knowledge 目录存在非标准结构，请整理到 requirements/design/data/decisions/raw/parsed 子目录后，再运行 webforge knowledge reindex。');
   }
 
   if (guidance.length === 0) {
@@ -641,7 +647,7 @@ async function discoverMailboxWorkers(basePath: string): Promise<string[]> {
 
 async function checkKnowledgeStructure(basePath: string): Promise<DoctorCheck> {
   const knowledgeDir = join(basePath, '.webforge', 'knowledge');
-  
+
   if (!existsSync(knowledgeDir)) {
     return {
       id: 'knowledge-structure',
@@ -651,27 +657,32 @@ async function checkKnowledgeStructure(basePath: string): Promise<DoctorCheck> {
     };
   }
 
-  const allowedCategories = ['requirements', 'design', 'decisions', 'data', 'raw', 'parsed'];
-  const rootFiles: string[] = [];
-
   try {
-    const entries = await readdir(knowledgeDir, { withFileTypes: true });
-    for (const entry of entries) {
-      // 检查根目录下的文件（非目录、非 index.json）
-      if (entry.isFile() && entry.name !== 'index.json') {
-        rootFiles.push(entry.name);
-      }
-    }
-  } catch {
-    // 目录读取失败
-  }
+    const structure = await inspectKnowledgeStructure(basePath);
+    const issues: string[] = [];
 
-  if (rootFiles.length > 0) {
+    if (structure.rootFiles.length > 0) {
+      issues.push(`根目录文件: ${structure.rootFiles.join(', ')}`);
+    }
+
+    if (structure.unknownDirectories.length > 0) {
+      issues.push(`非标准子目录: ${structure.unknownDirectories.join(', ')}`);
+    }
+
+    if (issues.length > 0) {
+      return {
+        id: 'knowledge-structure',
+        label: 'knowledge directory structure',
+        status: 'fail',
+        detail: issues.join('；')
+      };
+    }
+  } catch (error) {
     return {
       id: 'knowledge-structure',
       label: 'knowledge directory structure',
-      status: 'warn',
-      detail: `发现 ${rootFiles.length} 个文件直接放在 knowledge 根目录: ${rootFiles.join(', ')}。请使用 webforge knowledge add/create 命令写入子目录`
+      status: 'fail',
+      detail: `knowledge 目录结构检查失败: ${String(error)}`
     };
   }
 
@@ -681,4 +692,34 @@ async function checkKnowledgeStructure(basePath: string): Promise<DoctorCheck> {
     status: 'ok',
     detail: 'knowledge 目录结构正确，文档已分类到子目录'
   };
+}
+
+async function checkKnowledgeIndexIntegrity(basePath: string): Promise<DoctorCheck> {
+  const indexPath = join(basePath, '.webforge', 'knowledge', 'index.json');
+
+  if (!existsSync(indexPath)) {
+    return {
+      id: 'knowledge-index-integrity',
+      label: 'knowledge index integrity',
+      status: 'warn',
+      detail: 'knowledge/index.json 缺失，建议运行 webforge knowledge reindex 重建索引'
+    };
+  }
+
+  try {
+    const entries = await loadKnowledgeIndex(basePath);
+    return {
+      id: 'knowledge-index-integrity',
+      label: 'knowledge index integrity',
+      status: 'ok',
+      detail: `knowledge index 可读，entries=${entries.length}`
+    };
+  } catch (error) {
+    return {
+      id: 'knowledge-index-integrity',
+      label: 'knowledge index integrity',
+      status: 'fail',
+      detail: `knowledge/index.json 无法读取: ${String(error)}`
+    };
+  }
 }

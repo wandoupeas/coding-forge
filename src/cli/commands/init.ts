@@ -3,7 +3,9 @@
  */
 
 import { Command } from 'commander';
-import { existsSync } from 'fs';
+import { execFileSync } from 'child_process';
+import { existsSync, readFileSync } from 'fs';
+import { chmod } from 'fs/promises';
 import { join } from 'path';
 import logger from '../utils/logger.js';
 import { createWorkspace } from '../../core/workspace.js';
@@ -101,6 +103,13 @@ async function scaffoldRepoContract(projectRoot: string, projectName: string): P
     join(projectRoot, 'docs', 'examples', 'agent-onboarding-protocol.md'),
     renderOnboardingProtocolTemplate(projectName)
   );
+  await writeIfMissing(join(projectRoot, '.githooks', 'pre-commit'), renderPreCommitHookTemplate());
+  await writeIfMissing(join(projectRoot, '.githooks', 'commit-msg'), renderCommitMsgHookTemplate());
+  await writeIfMissing(join(projectRoot, 'scripts', 'webforge-guard.mjs'), renderWebforgeGuardTemplate());
+  await ensureExecutable(join(projectRoot, '.githooks', 'pre-commit'));
+  await ensureExecutable(join(projectRoot, '.githooks', 'commit-msg'));
+  await patchPackageJsonForHooks(projectRoot);
+  configureGitHooks(projectRoot);
 }
 
 async function writeIfMissing(path: string, content: string): Promise<void> {
@@ -109,6 +118,60 @@ async function writeIfMissing(path: string, content: string): Promise<void> {
   }
 
   await writeText(path, content);
+}
+
+async function ensureExecutable(path: string): Promise<void> {
+  if (!existsSync(path)) {
+    return;
+  }
+
+  try {
+    await chmod(path, 0o755);
+  } catch {
+    // Windows 或受限文件系统下忽略可执行位设置。
+  }
+}
+
+async function patchPackageJsonForHooks(projectRoot: string): Promise<void> {
+  const packageJsonPath = join(projectRoot, 'package.json');
+  if (!existsSync(packageJsonPath)) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as {
+      scripts?: Record<string, string>;
+    };
+    parsed.scripts ??= {};
+    parsed.scripts['webforge:doctor'] ??= 'webforge doctor --json';
+    parsed.scripts['webforge:guard'] ??= 'node scripts/webforge-guard.mjs pre-commit';
+    parsed.scripts.prepare ??=
+      "sh -c 'git rev-parse --show-toplevel >/dev/null 2>&1 && git config core.hooksPath .githooks || true'";
+    await writeText(packageJsonPath, `${JSON.stringify(parsed, null, 2)}\n`);
+  } catch (error) {
+    logger.warning(`跳过 package.json hooks 注入: ${String(error)}`);
+  }
+}
+
+function configureGitHooks(projectRoot: string): void {
+  try {
+    const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd: projectRoot,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+
+    if (repoRoot !== projectRoot) {
+      return;
+    }
+
+    execFileSync('git', ['config', 'core.hooksPath', '.githooks'], {
+      cwd: projectRoot,
+      stdio: ['ignore', 'ignore', 'ignore']
+    });
+  } catch {
+    // 非 git 仓库或当前环境不可写时忽略，交给 prepare 脚本兜底。
+  }
 }
 
 export async function buildInitVerificationSummary(
@@ -431,5 +494,115 @@ webforge logs runtime
 \`\`\`text
 onboard --json -> read shouldRead -> inspect drift if needed -> execute -> write back to .webforge/
 \`\`\`
+`;
+}
+
+function renderPreCommitHookTemplate(): string {
+  return `#!/usr/bin/env sh
+set -eu
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+node scripts/webforge-guard.mjs pre-commit
+`;
+}
+
+function renderCommitMsgHookTemplate(): string {
+  return `#!/usr/bin/env sh
+set -eu
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+node scripts/webforge-guard.mjs commit-msg "$1"
+`;
+}
+
+function renderWebforgeGuardTemplate(): string {
+  return `import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const [, , mode, messageFile] = process.argv;
+const repoRoot = process.cwd();
+
+function fail(message) {
+  console.error(\`WebForge guard: \${message}\`);
+  process.exit(1);
+}
+
+function loadJson(relativePath) {
+  const absolutePath = resolve(repoRoot, relativePath);
+  if (!existsSync(absolutePath)) {
+    fail(\`\${relativePath} is missing\`);
+  }
+
+  try {
+    return JSON.parse(readFileSync(absolutePath, 'utf8'));
+  } catch (error) {
+    fail(\`\${relativePath} is not valid JSON: \${error instanceof Error ? error.message : String(error)}\`);
+  }
+}
+
+function unwrapArray(payload, label, key) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (key && Array.isArray(payload?.[key])) {
+    return payload[key];
+  }
+  fail(\`\${label} does not contain a valid array payload\`);
+}
+
+function validatePreCommit() {
+  const runtime = loadJson('.webforge/runtime.json');
+  const tasks = unwrapArray(loadJson('.webforge/tasks.json'), '.webforge/tasks.json', 'tasks');
+  const phases = unwrapArray(loadJson('.webforge/phases.json'), '.webforge/phases.json', 'phases');
+  unwrapArray(loadJson('.webforge/knowledge/index.json'), '.webforge/knowledge/index.json');
+  unwrapArray(loadJson('.webforge/sessions/index.json'), '.webforge/sessions/index.json', 'sessions');
+
+  if (runtime.taskId && !tasks.some((task) => task.id === runtime.taskId)) {
+    fail(\`runtime task \${runtime.taskId} does not exist in .webforge/tasks.json\`);
+  }
+
+  if (runtime.phaseId && !phases.some((phase) => phase.id === runtime.phaseId)) {
+    fail(\`runtime phase \${runtime.phaseId} does not exist in .webforge/phases.json\`);
+  }
+}
+
+function validateCommitMessage(filePath) {
+  if (!filePath || !existsSync(filePath)) {
+    fail('commit-msg hook did not receive a readable commit message file');
+  }
+
+  const firstLine = readFileSync(filePath, 'utf8')
+    .split(/\\r?\\n/)
+    .map((line) => line.trim())
+    .find((line) => line && !line.startsWith('#')) || '';
+
+  if (/^(Merge|Revert)\\b/.test(firstLine) || /^(fixup|squash)! /.test(firstLine)) {
+    return;
+  }
+
+  const match = firstLine.match(/^(T\\d+):\\s+.+/);
+  if (!match) {
+    fail('commit message must start with a tracked task id, for example: T023: 强化状态自愈防护');
+  }
+
+  const tasksFile = loadJson('.webforge/tasks.json');
+  const tasks = Array.isArray(tasksFile)
+    ? tasksFile
+    : Array.isArray(tasksFile.tasks)
+      ? tasksFile.tasks
+      : [];
+
+  if (!tasks.some((task) => task.id === match[1])) {
+    fail(\`task \${match[1]} does not exist in .webforge/tasks.json\`);
+  }
+}
+
+if (mode === 'pre-commit') {
+  validatePreCommit();
+} else if (mode === 'commit-msg') {
+  validateCommitMessage(messageFile);
+} else {
+  fail('usage: node scripts/webforge-guard.mjs <pre-commit|commit-msg> [message-file]');
+}
 `;
 }

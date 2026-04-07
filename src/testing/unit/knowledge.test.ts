@@ -128,4 +128,23 @@ describe('knowledge command', () => {
     }>;
     expect(index.some((entry) => entry.path === '.webforge/knowledge/raw/outside.md')).toBe(true);
   });
+
+  it('rebuilds a corrupted knowledge index via the reindex command', async () => {
+    workspaceDir = await mkdtemp(join(tmpdir(), 'webforge-knowledge-reindex-'));
+    const state = await createWorkspace(workspaceDir, { projectName: 'knowledge-reindex' });
+    vi.spyOn(process, 'cwd').mockReturnValue(workspaceDir);
+
+    await writeFile(join(state.paths.knowledgeDesign, 'frontend-guidelines.md'), '# frontend', 'utf-8');
+    await writeFile(state.paths.knowledgeIndex, '{broken json', 'utf-8');
+
+    await createKnowledgeCommand().parseAsync(['node', 'knowledge', 'reindex']);
+
+    const index = JSON.parse(await readFile(state.paths.knowledgeIndex, 'utf-8')) as Array<{
+      path: string;
+      type: string;
+    }>;
+
+    expect(index.some((entry) => entry.path === '.webforge/knowledge/design/frontend-guidelines.md')).toBe(true);
+    expect(index.some((entry) => entry.type === 'design')).toBe(true);
+  });
 });

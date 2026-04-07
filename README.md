@@ -152,6 +152,14 @@ webforge onboard --json
 
 `init` 会同时生成带 onboarding contract 的 `AGENTS.md`、`docs/agent-guide.md`、`docs/methodology/superpowers-integration.md`，以及可直接照着执行的 `docs/examples/agent-onboarding-protocol.md`。初始化结束时还会立即跑一次 post-init self-check，确认 `doctor` 和 `onboard` 与这些协议文件保持一致。
 
+现在初始化还会默认补齐本地门禁文件：
+
+- `.githooks/pre-commit`
+- `.githooks/commit-msg`
+- `scripts/webforge-guard.mjs`
+
+如果项目根目录已经存在 `package.json`，还会补上 `webforge:doctor`、`webforge:guard` 和 `prepare`，用于在安装依赖后自动恢复 `.githooks`。
+
 如果你想显式重跑这次自检，可以直接执行：
 
 ```bash
@@ -185,6 +193,14 @@ webforge ui --root ~/projects
 2. 进入单项目后，始终先看右侧 recovery rail，再决定沿 `Summary / Evidence / Runtime` 哪条视角继续
 3. 在 `Evidence` 里把 knowledge / deliverable / session 当资源浏览器来读，而不是翻三列卡片
 4. 在 `Runtime` 里优先看 `Recent events` 和 `Snapshots comparison`，再看 drift reasons 和 checkpoint
+
+如果某个项目的 `.webforge/knowledge/index.json` 被手工改坏，可以直接执行：
+
+```bash
+webforge knowledge reindex
+```
+
+它会根据标准知识目录重新扫描并重建索引。
 
 ## 仓库结构
 
