@@ -24,8 +24,14 @@
 4. `.webforge/phases.json`
 5. `.webforge/sessions/index.json`
 6. `.webforge/knowledge/index.json`
+7. `.webforge/learning/index.json`（如果已存在）
 
 如果当前任务需要上下文，再读取对应的 knowledge 文件和 deliverable。
+如果你怀疑当前任务会触发历史上重复出现的问题，可以再执行：
+
+```bash
+webforge learn remind --task <task-id>
+```
 
 如果你怀疑仓库契约不完整，先运行：
 
@@ -83,6 +89,7 @@ read state
 - 在任务 metadata 中记录错误
 - 更新任务状态
 - 保持 runtime 和 session 可恢复
+- 如已完成纠正，使用 `webforge learn record` 记录错误与预防措施
 
 ## 6. 何时使用 superpowers
 
@@ -118,6 +125,7 @@ webforge superpowers record writing-plans \
 - 新的 superpowers workflow 结果：`superpowers-runs.json`
 - 暂停或恢复：`sessions/`
 - 执行中状态：`runtime.json`
+- 学习记录：通过 `webforge learn` 更新 `.webforge/learning/`
 
 ## 8. 面向 Codex 与 Claude Code 的共同约定
 
@@ -134,7 +142,8 @@ webforge superpowers record writing-plans \
 1. 代码或文档已经落盘
 2. 状态已经写回 `.webforge/`
 3. 验证命令已经运行
-4. 新会话仅靠仓库文件也能继续
+4. 如发生纠正，已经记录到 `webforge learn`
+5. 新会话仅靠仓库文件也能继续
 
 ## 10. 标准接入范式
 
@@ -149,6 +158,8 @@ webforge dashboard
 ```
 
 适合人类先读一遍当前状态，再决定是否继续执行。
+
+当仓库中存在历史学习记录时，文本版 `webforge resume` 还会附带当前任务相关的智能提醒。
 
 ### 结构化模式
 

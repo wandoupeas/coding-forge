@@ -199,6 +199,11 @@ webforge resume
 webforge resume --json
 ```
 
+补充说明：
+
+- 纯文本输出会在存在学习记录时附带当前任务相关的智能提醒
+- 如需显式获取提醒，可使用 `webforge learn remind --task <task-id>`
+
 ### `webforge dashboard [--watch]`
 
 查看当前 workspace 的总观察面。
@@ -567,7 +572,85 @@ webforge review del-001 --reject -m "needs changes"
 webforge review T001 --approve --all
 ```
 
-## 6. 协作与通信
+## 6. 学习与提醒
+
+### `webforge learn record <title>`
+
+记录一个已纠正的错误，并把根因、修复方式和预防措施写入 `.webforge/learning/errors.json`。
+
+适合这些场景：
+
+- 用户刚纠正了 agent 的工作流错误
+- 你刚修复了一个重复出现的问题
+- 你想把本次纠正沉淀成可复习的记录
+
+常用示例：
+
+```bash
+webforge learn record "忘记更新任务状态" \
+  --category workflow \
+  --severity medium \
+  --cause "结束时未执行状态回写" \
+  --prevention "完成任务后先执行 webforge task update"
+```
+
+### `webforge learn lesson <title>`
+
+添加一条经验教训，供后续提醒和复习使用。
+
+常用示例：
+
+```bash
+webforge learn lesson "优先使用 webforge CLI 回写状态" \
+  --content "不要直接修改 .webforge/ 文件" \
+  --priority high
+```
+
+### `webforge learn list`
+
+列出最近记录的错误，支持按类别、严重级别和时间过滤。
+
+常用示例：
+
+```bash
+webforge learn list
+webforge learn list --category workflow --limit 10
+```
+
+### `webforge learn show <error-id>`
+
+查看单条错误记录的详情。
+
+### `webforge learn lessons`
+
+查看所有经验教训，支持按类别和优先级过滤。
+
+### `webforge learn review`
+
+进入复习模式，集中查看最近错误与经验教训。
+
+### `webforge learn report`
+
+生成学习统计报告。
+
+### `webforge learn remind [--task <task-id>]`
+
+获取当前任务相关的学习提醒。
+
+适合这些场景：
+
+- 新会话刚恢复，希望先看高风险重复错误
+- 某个任务之前已经被多次纠正
+- 你想在动手前快速读一遍注意事项
+
+常用示例：
+
+```bash
+webforge learn remind
+webforge learn remind --task T001
+```
+
+## 7. 协作与通信
 
 ### `webforge mailbox list`
 
@@ -601,7 +684,7 @@ webforge mailbox read backend --mark-read
 webforge mailbox clear reviewer
 ```
 
-## 7. 检查点与恢复
+## 8. 检查点与恢复
 
 ### `webforge checkpoint list`
 
@@ -623,7 +706,7 @@ webforge checkpoint rollback cp-001
 webforge checkpoint rollback cp-001 --restore-deliverables
 ```
 
-## 8. 最常用的三条路径
+## 9. 最常用的三条路径
 
 ### 新项目起盘
 

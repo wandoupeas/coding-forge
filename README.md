@@ -40,6 +40,7 @@ WebForge 是一个面向 Coding Agent 的 `agent-first harness` 参考实现。
 - `knowledge/index.json`：知识入口
 - `deliverables/index.json`：交付物索引
 - `sessions/index.json`：跨会话恢复入口
+- `learning/index.json`：历史纠错与经验教训入口（在首次学习记录或提醒初始化后生成）
 
 ## 快速开始
 
@@ -302,8 +303,9 @@ webforge resume --json
    获取当前 `nextAction`、`shouldRead`、`readyCount`、`blockedCount`、`pendingReviewCount`。
 4. 读取 `shouldRead` 里的文件。
 5. 如问题还在发散，用 `brainstorming`；如 spec 已经稳定，用 `writing-plans`。
-6. 如果使用了 `superpowers` workflow，把结果用 `webforge superpowers record ...` 回写到 `.webforge/superpowers-runs.json`。
-7. 执行工作，并把结果回写到 `.webforge/`。
+6. 如需显式查看历史纠错提醒，使用 `webforge learn remind --task <task-id>`。
+7. 如果使用了 `superpowers` workflow，把结果用 `webforge superpowers record ...` 回写到 `.webforge/superpowers-runs.json`。
+8. 执行工作，并把结果回写到 `.webforge/`。
 
 一句话：
 

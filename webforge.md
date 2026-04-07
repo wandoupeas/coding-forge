@@ -34,7 +34,8 @@
 4. 读取 `.webforge/phases.json`
 5. 读取 `.webforge/sessions/index.json`
 6. 读取 `.webforge/knowledge/index.json`
-7. 必要时再读取具体 knowledge、deliverable、mailbox 内容
+7. 读取 `.webforge/learning/index.json`（如果已经产生学习记录）
+8. 必要时再读取具体 knowledge、deliverable、mailbox 内容
 
 如果你想先拿一个结构化简报，而不是手动逐个读文件，直接运行：
 
@@ -87,6 +88,8 @@ webforge onboard --json
   `superpowers` workflow 结果索引
 - `.webforge/threads.json`
   线程化恢复和 worktree / branch / artifact linkage
+- `.webforge/learning/`
+  纠错记录、经验教训和学习索引
 
 ## 5. 标准工作循环
 
@@ -129,6 +132,7 @@ webforge logs runtime --json
 4. `blocked` 原因
 5. `pending_review` 交付物
 6. 最近一次 runtime log 的 `contextDrift / workflowContext / threadLinkage`
+7. 当前任务相关的学习提醒与高优先级 lesson
 
 不要只根据聊天上下文猜下一步。
 
@@ -172,6 +176,7 @@ webforge superpowers record writing-plans \
 - 新的 workflow 结果：更新 `superpowers-runs.json`
 - 暂停或恢复：更新 `sessions/`
 - 协作消息：写入 `mailboxes/*.jsonl`
+- 纠错与经验教训：通过 `webforge learn record / lesson` 更新 `.webforge/learning/`
 
 ## 9. 完成前检查
 
@@ -180,7 +185,8 @@ webforge superpowers record writing-plans \
 1. 代码或文档已经落盘
 2. 相关 `.webforge/` 状态已经更新
 3. 验证命令已经运行
-4. 新会话仅依靠仓库文件就能恢复下一步
+4. 如发生了错误纠正，已经使用 `webforge learn record` 记录
+5. 新会话仅依靠仓库文件就能恢复下一步
 
 ## 10. 反模式
 

@@ -16,7 +16,7 @@ WebForge v0.2 的目标是把仓库重构成一个稳定的 `agent-first harness
   -> Agent
   -> WebForge workspace contract (.webforge/)
   -> planning/context/runtime core
-  -> deliverables / code / sessions / mailboxes
+  -> deliverables / code / sessions / mailboxes / learning
 ```
 
 ## 3. 分层模型
@@ -39,6 +39,11 @@ WebForge v0.2 的目标是把仓库重构成一个稳定的 `agent-first harness
 │   └── index.json
 ├── sessions/
 │   └── index.json
+├── learning/
+│   ├── errors.json
+│   ├── lessons.json
+│   ├── patterns.json
+│   └── index.json
 └── mailboxes/
 ```
 
@@ -51,6 +56,7 @@ WebForge v0.2 的目标是把仓库重构成一个稳定的 `agent-first harness
 - `session.ts`
 - `deliverable.ts`
 - `mailbox.ts`
+- `learning.ts`
 
 这些模块回答的是“当前事实状态是什么”，而不是“下一步策略是什么”。
 
@@ -148,8 +154,10 @@ load workspace
 恢复顺序：
 
 ```text
-runtime -> tasks/phases -> sessions -> knowledge -> deliverables
+runtime -> tasks/phases -> sessions -> knowledge -> learning -> deliverables
 ```
+
+当仓库中已经积累过纠错历史时，恢复流程还可以结合 `learning` 数据生成提醒，用于在继续当前任务前提示高风险的重复问题和经验教训。
 
 ## 6. Codex / Claude Code / superpowers
 
