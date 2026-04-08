@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { Server, type IncomingMessage, type ServerResponse } from 'http';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -6,15 +7,21 @@ import { Mailbox } from '../../core/mailbox.js';
 import { createWorkspace } from '../../core/workspace.js';
 import { writeJson } from '../../utils/file.js';
 import { routeUiRequest } from '../../ui/http/router.js';
-import { createUiHttpServer } from '../../ui/http/server.js';
+import { createUiHttpServer, startUiHttpServer } from '../../ui/http/server.js';
 
 describe('ui http', () => {
   let workspaceDir = '';
   let server: Awaited<ReturnType<typeof createUiHttpServer>> | null = null;
+  let startedServer: Awaited<ReturnType<typeof startUiHttpServer>> | null = null;
 
   afterEach(async () => {
-    if (server) {
-      server.server.close();
+    if (startedServer) {
+      await startedServer.close();
+      startedServer = null;
+    } else if (server) {
+      await new Promise<void>((resolve) => {
+        server?.server.close(() => resolve());
+      });
       server = null;
     }
 
@@ -163,7 +170,230 @@ describe('ui http', () => {
       }
     });
   });
+
+  it('returns structured errors for unsupported methods and unknown routes', async () => {
+    workspaceDir = await seedUiWorkspace();
+    server = await createUiHttpServer({ rootPath: workspaceDir });
+
+    const projectId = server.registry.projects[0]?.id;
+    expect(projectId).toBeDefined();
+
+    const [methodNotAllowed, unknownRoute, missingSection] = await Promise.all([
+      routeUiRequest('POST', '/api/projects', {
+        rootPath: workspaceDir,
+        registry: server.registry
+      }),
+      routeUiRequest('GET', '/api/unknown', {
+        rootPath: workspaceDir,
+        registry: server.registry
+      }),
+      routeUiRequest('GET', `/api/projects/${projectId}`, {
+        rootPath: workspaceDir,
+        registry: server.registry
+      })
+    ]);
+
+    expect(methodNotAllowed).toMatchObject({
+      status: 405,
+      body: {
+        error: {
+          code: 'method_not_allowed',
+          details: {
+            method: 'POST'
+          }
+        }
+      }
+    });
+
+    expect(unknownRoute).toMatchObject({
+      status: 404,
+      body: {
+        error: {
+          code: 'route_not_found',
+          details: {
+            pathname: '/api/unknown'
+          }
+        }
+      }
+    });
+
+    expect(missingSection).toMatchObject({
+      status: 404,
+      body: {
+        error: {
+          code: 'route_not_found',
+          details: {
+            pathname: `/api/projects/${projectId}`
+          }
+        }
+      }
+    });
+  });
+
+  it('serves api responses, static assets, and spa fallbacks through the request listener', async () => {
+    workspaceDir = await seedUiWorkspace();
+    const staticRoot = join(workspaceDir, 'dist-ui');
+    await mkdir(join(staticRoot, 'assets'), { recursive: true });
+    await writeFile(
+      join(staticRoot, 'index.html'),
+      '<!doctype html><html><body>ui-http-demo shell</body></html>',
+      'utf-8'
+    );
+    await writeFile(join(staticRoot, 'assets', 'app.js'), 'console.log("app");', 'utf-8');
+    await writeFile(join(staticRoot, 'assets', 'app.css'), 'body { color: black; }', 'utf-8');
+    await writeFile(join(staticRoot, 'assets', 'manifest.json'), '{"name":"demo"}', 'utf-8');
+    await writeFile(join(staticRoot, 'assets', 'logo.svg'), '<svg></svg>', 'utf-8');
+    await writeFile(join(staticRoot, 'assets', 'pixel.png'), Buffer.from([137, 80, 78, 71]));
+    await writeFile(join(staticRoot, 'assets', 'favicon.ico'), Buffer.from([0, 0, 1, 0]));
+    await writeFile(join(staticRoot, 'assets', 'data.bin'), Buffer.from([1, 2, 3]));
+
+    server = await createUiHttpServer({ rootPath: workspaceDir, staticRoot });
+
+    const apiResponse = await dispatchHttpRequest(server.server, 'GET', '/api/projects');
+    expect(apiResponse.statusCode).toBe(200);
+    expect(apiResponse.headers['content-type']).toBe('application/json; charset=utf-8');
+    expect(apiResponse.headers['cache-control']).toBe('no-store');
+    const apiPayload = JSON.parse(apiResponse.body) as { projects: Array<{ name: string }> };
+    expect(apiPayload.projects[0]?.name).toBe('ui-http-demo');
+
+    const assets = [
+      ['/assets/app.js', 'application/javascript; charset=utf-8'],
+      ['/assets/app.css', 'text/css; charset=utf-8'],
+      ['/assets/manifest.json', 'application/json; charset=utf-8'],
+      ['/assets/logo.svg', 'image/svg+xml'],
+      ['/assets/pixel.png', 'image/png'],
+      ['/assets/favicon.ico', 'image/x-icon'],
+      ['/assets/data.bin', 'application/octet-stream']
+    ] as const;
+
+    for (const [pathname, contentType] of assets) {
+      const response = await dispatchHttpRequest(server.server, 'GET', pathname);
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toBe(contentType);
+      expect(response.headers['cache-control']).toBe('public, max-age=60');
+    }
+
+    const spaFallback = await dispatchHttpRequest(server.server, 'GET', '/projects/detail');
+    expect(spaFallback.statusCode).toBe(200);
+    expect(spaFallback.headers['content-type']).toBe('text/html; charset=utf-8');
+    expect(spaFallback.headers['cache-control']).toBe('no-store');
+    expect(spaFallback.body).toContain('ui-http-demo shell');
+  });
+
+  it('returns ui_bundle_missing when the static bundle is absent', async () => {
+    workspaceDir = await seedUiWorkspace();
+    server = await createUiHttpServer({
+      rootPath: workspaceDir,
+      staticRoot: join(workspaceDir, 'missing-ui')
+    });
+
+    const response = await dispatchHttpRequest(server.server, 'GET', '/');
+    expect(response.statusCode).toBe(503);
+    expect(response.headers['content-type']).toBe('application/json; charset=utf-8');
+    const payload = JSON.parse(response.body) as {
+      error: { code: string; message: string; details: { staticRoot: string } };
+    };
+    expect(payload).toMatchObject({
+      error: {
+        code: 'ui_bundle_missing',
+        message: 'UI bundle not found',
+        details: {
+          staticRoot: join(workspaceDir, 'missing-ui')
+        }
+      }
+    });
+  });
+
+  it('derives bound server metadata when listen/address succeed', async () => {
+    workspaceDir = await seedUiWorkspace();
+
+    const listenSpy = vi
+      .spyOn(Server.prototype, 'listen')
+      .mockImplementation(function mockListen(...args: unknown[]) {
+        const callback = args.find((value) => typeof value === 'function') as (() => void) | undefined;
+        callback?.();
+        return this;
+      });
+    const addressSpy = vi.spyOn(Server.prototype, 'address').mockReturnValue({
+      address: '127.0.0.1',
+      family: 'IPv4',
+      port: 4815
+    });
+    const closeSpy = vi
+      .spyOn(Server.prototype, 'close')
+      .mockImplementation(function mockClose(callback?: (error?: Error | undefined) => void) {
+        callback?.();
+        return this;
+      });
+
+    startedServer = await startUiHttpServer({
+      rootPath: workspaceDir,
+      host: '127.0.0.1',
+      port: 0
+    });
+
+    expect(listenSpy).toHaveBeenCalled();
+    expect(addressSpy).toHaveBeenCalled();
+    expect(startedServer).toMatchObject({
+      host: '127.0.0.1',
+      port: 4815,
+      url: 'http://127.0.0.1:4815'
+    });
+
+    await startedServer.close();
+    startedServer = null;
+    expect(closeSpy).toHaveBeenCalled();
+  });
 });
+
+async function dispatchHttpRequest(
+  httpServer: Server,
+  method: string,
+  url: string
+): Promise<{
+  statusCode: number;
+  headers: Record<string, string>;
+  body: string;
+}> {
+  const headers: Record<string, string> = {};
+  let body = '';
+  let statusCode = 200;
+
+  const done = new Promise<void>((resolve) => {
+    const response = {
+      setHeader(name: string, value: string) {
+        headers[name.toLowerCase()] = value;
+      },
+      end(chunk?: string | Buffer) {
+        body = typeof chunk === 'string' ? chunk : chunk?.toString('utf-8') ?? '';
+        resolve();
+      },
+      get statusCode() {
+        return statusCode;
+      },
+      set statusCode(value: number) {
+        statusCode = value;
+      }
+    } as unknown as ServerResponse;
+
+    httpServer.emit(
+      'request',
+      {
+        method,
+        url
+      } as IncomingMessage,
+      response
+    );
+  });
+
+  await done;
+
+  return {
+    statusCode,
+    headers,
+    body
+  };
+}
 
 async function seedUiWorkspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'webforge-ui-http-'));
