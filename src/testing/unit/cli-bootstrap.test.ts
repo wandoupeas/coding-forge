@@ -40,7 +40,11 @@ describe('cli bootstrap', () => {
       'mailbox',
       'verify',
       'record',
-      'ui'
+      'status',
+      'task',
+      'session',
+      'ui',
+      'learn'
     ]);
   });
 
