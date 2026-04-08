@@ -15,8 +15,10 @@ const FULL_AGENTS_MD = `# test
 - 必须使用 webforge task 创建和更新任务
 
 \`\`\`
-<task-id>: <task-title>
+<type>(<scope>): <task-id> <summary>
 \`\`\`
+
+feat(webforge): T024 unify commit convention
 `;
 
 describe('doctor command', () => {

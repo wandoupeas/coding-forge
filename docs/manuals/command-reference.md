@@ -44,6 +44,12 @@ node <webforge-root>/dist/cli/index.js
 - `.githooks/commit-msg`
 - `scripts/webforge-guard.mjs`
 
+默认提交规范也会一并落地为 GitHub 风格单行主题：
+
+- 格式：`<type>(<scope>): <task-id> <summary>`
+- 示例：`feat(webforge): T024 unify commit convention`
+- `commit-msg` hook 会校验主题格式和任务编号是否存在于 `.webforge/tasks.json`
+
 如果项目根目录已经存在 `package.json`，`init` 还会补充：
 
 - `scripts.webforge:doctor`

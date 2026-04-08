@@ -58,13 +58,15 @@ describe('init command adapter', () => {
     expect(agentsDoc).toContain('标准 Onboarding Protocol');
     expect(agentsDoc).toContain('webforge onboard --json');
     expect(agentsDoc).toContain('webforge doctor --json');
+    expect(agentsDoc).toContain('feat(webforge): T024 unify commit convention');
     expect(agentGuide).toContain('恢复协议');
     expect(agentGuide).toContain('webforge logs runtime --json');
     expect(superpowersGuide).toContain('与恢复协议的连接点');
     expect(superpowersGuide).toContain('doctor / onboard / resume / logs');
     expect(preCommitHook).toContain('node scripts/webforge-guard.mjs pre-commit');
     expect(commitMsgHook).toContain('node scripts/webforge-guard.mjs commit-msg "$1"');
-    expect(guardScript).toContain('commit message must start with a tracked task id');
+    expect(guardScript).toContain('commit message must use GitHub style and include a tracked task id');
+    expect(guardScript).toContain('feat(webforge): T024 unify commit convention');
     expect(onboardingProtocol).toContain('Agent Onboarding Protocol');
     expect(onboardingProtocol).toContain('webforge onboard --json');
     expect(onboardingProtocol).toContain('webforge doctor --json');

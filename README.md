@@ -160,6 +160,12 @@ webforge onboard --json
 
 如果项目根目录已经存在 `package.json`，还会补上 `webforge:doctor`、`webforge:guard` 和 `prepare`，用于在安装依赖后自动恢复 `.githooks`。
 
+提交规范默认使用 GitHub 风格单行主题，并要求包含任务编号，例如：
+
+```bash
+git commit -m "feat(webforge): T024 unify commit convention"
+```
+
 如果你想显式重跑这次自检，可以直接执行：
 
 ```bash

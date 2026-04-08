@@ -125,7 +125,9 @@ export async function buildDoctorReport(
     const agentsContent = readFileSync(agentsPath, 'utf-8');
     const hasMandatorySection = agentsContent.includes('强制规范') || agentsContent.includes('MANDATORY');
     const hasCLiRequirement = agentsContent.includes('webforge task') && agentsContent.includes('禁止');
-    const hasCommitFormat = agentsContent.includes('<task-id>:');
+    const hasCommitFormat =
+      agentsContent.includes('<type>(<scope>): <task-id> <summary>') ||
+      agentsContent.includes('feat(webforge): T024');
     
     if (hasMandatorySection && hasCLiRequirement && hasCommitFormat) {
       checks.push({

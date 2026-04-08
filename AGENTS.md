@@ -32,13 +32,9 @@ webforge task update <task-id> --status completed
 # 2. 检查 runtime 状态
 webforge resume --json
 
-# 3. 提交代码（详细提交信息）
+# 3. 提交代码（GitHub 风格单行主题）
 git add .
-git commit -m "<task-id>: <task-title>
-
-- <change-1>
-- <change-2>
-- <change-3>"
+git commit -m "feat(scope): <task-id> <summary>"
 ```
 
 ### 禁止直接操作的文件
@@ -57,21 +53,21 @@ git commit -m "<task-id>: <task-title>
 每个任务完成后必须提交，提交信息格式：
 
 ```
-<task-id>: <task-title>
-
-- <具体变更1>
-- <具体变更2>
-- <具体变更3>
+<type>(<scope>): <task-id> <summary>
 ```
 
 **示例：**
 ```
-T015: 修复前端TypeScript错误
-
-- 修复 React 19 useRef 需要初始值的问题
-- 替换 useRequest 为 useEffect + useState
-- 修复 ProTable render 函数参数类型
+feat(webforge): T024 unify commit convention
+fix(runtime): T011 repair session index compatibility
+docs(agent): T017 sync learning workflow guide
 ```
+
+约束说明：
+- 使用 GitHub 风格单行主题
+- `type` 推荐使用：`feat`、`fix`、`docs`、`refactor`、`test`、`chore`、`build`、`ci`、`perf`、`revert`
+- `scope` 推荐写模块名或子系统名，如 `webforge`、`runtime`、`agent`
+- 主题中必须包含任务编号，如 `T024`
 
 ---
 
@@ -344,9 +340,10 @@ webforge learn remind --task T001
 
 ## 规范版本
 
-- **版本**: v2.2
-- **更新日期**: 2026-04-03
+- **版本**: v2.3
+- **更新日期**: 2026-04-08
 - **生效范围**: 所有 WebForge 仓库及 Agent 操作
 - **主要变更**: 
   - 添加强制 CLI 操作规范、链式更新流程、代码提交规范 (v2.1)
   - 新增智能错误记录与学习系统 `webforge learn` (v2.2)
+  - 提交规范统一为 GitHub 风格单行主题，并要求包含任务编号 (v2.3)
