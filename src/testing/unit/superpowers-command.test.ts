@@ -164,8 +164,9 @@ describe('superpowers command', () => {
 
     const sessionIndex = JSON.parse(
       await readFile(join(workspaceDir, '.webforge', 'sessions', 'index.json'), 'utf-8')
-    ) as { sessions: Array<{ workflowContext?: Record<string, unknown> }> };
-    expect(sessionIndex.sessions[0]?.workflowContext).toMatchObject({
+    ) as { sessions: Array<{ id: string; workflowContext?: Record<string, unknown> }> };
+    const taskSession = sessionIndex.sessions.find((session) => session.id === 'sess-100');
+    expect(taskSession?.workflowContext).toMatchObject({
       workflow: 'writing-plans',
       runId: recorded.id,
       owner: 'pm',

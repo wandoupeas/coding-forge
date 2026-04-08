@@ -33,18 +33,38 @@ describe('workspace v0.2', () => {
     expect(state.paths.deliverablesIndex).toContain('.webforge/deliverables/index.json');
     expect(state.paths.knowledgeIndex).toContain('.webforge/knowledge/index.json');
 
-    expect(state.indexes.sessions).toEqual([]);
+    expect(state.indexes.sessions).toHaveLength(1);
+    expect(state.indexes.sessions[0]).toMatchObject({
+      id: 'session-demo-001',
+      name: '初始会话',
+      status: 'active',
+      contextSummary: 'Workspace 初始化完成',
+      nextAction: '开始第一个任务',
+      stats: {
+        tasksCompleted: 0,
+        totalTasks: 0
+      }
+    });
     expect(state.indexes.threads).toEqual([]);
     expect(state.indexes.deliverables).toEqual([]);
     expect(state.indexes.knowledge).toEqual([]);
 
     const knowledgeIndex = JSON.parse(await readFile(state.paths.knowledgeIndex, 'utf-8')) as unknown[];
-    const deliverablesIndex = JSON.parse(await readFile(state.paths.deliverablesIndex, 'utf-8')) as unknown[];
-    const sessionsIndex = JSON.parse(await readFile(state.paths.sessionsIndex, 'utf-8')) as unknown[];
+    const deliverablesIndex = JSON.parse(await readFile(state.paths.deliverablesIndex, 'utf-8')) as {
+      items: unknown[];
+    };
+    const sessionsIndex = JSON.parse(await readFile(state.paths.sessionsIndex, 'utf-8')) as {
+      sessions: Array<Record<string, unknown>>;
+    };
 
     expect(knowledgeIndex).toEqual([]);
-    expect(deliverablesIndex).toEqual([]);
-    expect(sessionsIndex).toEqual([]);
+    expect(deliverablesIndex.items).toEqual([]);
+    expect(sessionsIndex.sessions).toHaveLength(1);
+    expect(sessionsIndex.sessions[0]).toMatchObject({
+      id: 'session-demo-001',
+      name: '初始会话',
+      status: 'active'
+    });
 
     const runtime = JSON.parse(await readFile(state.paths.runtime, 'utf-8')) as {
       version: string;
@@ -65,7 +85,12 @@ describe('workspace v0.2', () => {
 
     expect(state.runtime.version).toBe('0.2');
     expect(state.runtime.status).toBe('idle');
-    expect(state.indexes.sessions).toEqual([]);
+    expect(state.indexes.sessions).toHaveLength(1);
+    expect(state.indexes.sessions[0]).toMatchObject({
+      id: 'session-demo-001',
+      name: '初始会话',
+      status: 'active'
+    });
     expect(state.indexes.threads).toEqual([]);
     expect(state.indexes.deliverables).toEqual([]);
     expect(state.indexes.knowledge).toEqual([]);
