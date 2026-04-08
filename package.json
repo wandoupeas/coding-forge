@@ -1,6 +1,6 @@
 {
   "name": "@wandoupeas/coding-forge",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Agent-first harness CLI for Codex and Claude Code",
   "type": "module",
   "main": "./dist/cli/index.js",
